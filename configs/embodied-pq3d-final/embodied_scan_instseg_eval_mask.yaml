@@ -1,0 +1,174 @@
+# Experiment general info
+name: "Embodied-PQ3D"
+base_dir: "outputs"
+exp_dir: ""
+note: ""
+naming_keywords: ["note", "time"]
+
+rng_seed: 42
+num_gpu: 1
+mode: "train"
+
+resume: False
+pretrain_ckpt_path: ''
+
+debug:
+  flag: False
+  debug_size: 10
+
+logger:
+  name: wandb
+  entity: optimus-prime-3dvl
+  autoname: True
+
+# dataset details
+data:
+  train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
+  val: ['EmbodiedScanInstSegScanNet']
+  test: ['EmbodiedScanInstSegHM3D']
+
+  load_scan_options:
+    load_pc_info: True
+    load_segment_info: True
+    load_image_segment_feat: True
+    load_global_pc: True
+  
+  instseg_options:
+    num_labels: 200
+    ignore_label: -100
+    filter_out_classes: [0, 2, 35] # filter out wall, floor, ceiling
+    voxel_size: 0.02
+    use_open_vocabulary: True
+    num_queries: 120
+    query_sample_strategy: 'random_segment'
+    image_augmentations_path: configs/instseg/augmentation/albumentations_aug.yaml
+    volume_augmentations_path: configs/instseg/augmentation/volumentations_aug.yaml
+    compute_local_box: True
+  
+  EmbodiedScanInstSegHM3D:
+    load_frame_interval: 1
+    val_load_scan_max_num: -1
+  
+  EmbodiedScanInstSegScanNet:
+    load_frame_interval: 1
+    val_load_scan_max_num: -1
+
+  scene_verse_base: /scratch2/generalvision/chenyixin/datasets/SceneVerse
+  embodied_base: /mnt/fillipo/zhuziyu/embodied_scan
+
+# dataloader details
+dataloader:
+  # This is a per-gpu batchsize
+  batchsize: 4
+  batchsize_eval: 1
+  num_workers: 4
+  
+task: InstSeg
+data_wrapper: EmbodiedScanInstSegDatasetWrapper
+
+# Training details
+trainer: EmbodiedStage1Trainer
+
+solver:
+  gradient_accumulation_steps: 1
+  lr: 1e-4
+  grad_norm: 80
+  epochs: 60
+  epochs_per_eval: 60
+  optim:
+    name: AdamW
+    args:
+      betas: [0.9, 0.98]
+  sched:
+    name: warmup_cosine
+    args:
+      warmup_steps: 100
+
+eval:
+  name: EmbodiedScanInstSegEvalBoxMerge
+  pass_kwargs: True
+  save: False
+  ignore_label: ${data.instseg_options.ignore_label}
+  filter_out_classes: [0, 2, 35, 200] # this means filter out masks directly, semantic of class 200 is filterd out
+  compute_loss_eval: True
+  dataset_name:  HM3D
+
+model:
+  name: EmbodiedPQ3DInstSegModel
+  memories: [voxel, mv]
+  hidden_size: 768
+  init_query_by_feat: True
+  add_geometry_to_segment: True
+  obj_loc:
+    spatial_dim: 5
+    dim_loc: 3
+    pairwise_rel_type: "center"
+
+  voxel_encoder:
+    name: PCDMask3DSegLevelEncoder
+    args:
+      backbone_kwargs:
+        config:
+          dialations: [ 1, 1, 1, 1 ]
+          conv1_kernel_size: 5
+          bn_momentum: 0.02
+        in_channels: 3
+        out_channels: 200
+        out_fpn: true
+      freeze_backbone: False # train only the projection layer
+      hlevels: [0,1,2,3]
+      hidden_size: ${model.hidden_size}
+      dropout: 0.1
+
+  mv_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size : 1024
+      hidden_size: ${model.hidden_size}
+      use_projection: True
+      use_cls_head: False
+      dropout: 0.1
+
+  unified_encoder:
+    name: QueryMaskEncoder
+    args:
+      hidden_size: ${model.hidden_size}
+      num_attention_heads: 12
+      num_layers: 4
+      spatial_selfattn: True
+      memories: ${model.memories}
+      structure: "parallel"
+      use_self_mask: true
+      num_blocks: 1 
+
+  heads: [mask, openvocab]
+  mask_head:
+    name: "MaskHeadSegLevelWithBox"
+    args:
+      hidden_size: ${model.hidden_size}
+      num_targets: 201
+      memories_for_match: ${model.memories}
+      filter_out_classes: []
+  openvocab_head:
+    name: "OpenVocabHead"
+    args:
+      hidden_dim: ${model.hidden_size}
+      out_dim: 768
+  
+  loss_list: [EmbodiedScanInstSegLoss]
+  vis_loss_list: []
+
+  EmbodiedScanInstSegLoss:
+    cost_class: 0.5
+    cost_score: 0.5
+    cost_mask: 1
+    cost_dice: 1
+    cost_box: 1
+    cost_open_vocab: 1
+
+    score_weight: [0.1, 1]
+
+    matcher:
+      cost_score: 0.5
+      cost_mask: 1.
+      cost_dice: 1.

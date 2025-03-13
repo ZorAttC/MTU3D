@@ -1,0 +1,200 @@
+# Experiment general info
+name: "Embodied-PQ3D"
+base_dir: "outputs"
+exp_dir: ""
+note: ""
+naming_keywords: ["note", "time"]
+
+rng_seed: 42
+num_gpu: 1
+mode: "train"
+
+resume: False
+pretrain_ckpt_path: ''
+
+debug:
+  flag: False
+  debug_size: 10
+
+logger:
+  name: wandb
+  entity: optimus-prime-3dvl
+  autoname: True
+
+# dataset details
+data:
+  train: ['EmbodiedVLESG3D', 'EmbodiedVLEGoat', 'EmbodiedVLEOvon', 'EmbodiedVLEScanRefer', 'EmbodiedVLEMulti3DRefer', 'EmbodiedVLEScanQA', 'EmbodiedVLENr3D', 'EmbodiedVLESG3DReferScanNet', 'EmbodiedVLESG3DReferHM3D', 'EmbodiedVLEHM3DRefer']
+  val: ${data.train}
+  test: ${data.train}
+
+  load_scan_options:
+    load_openvocab: True
+    load_score: False
+  
+  scene_verse_base: /mnt/fillipo/Datasets/SceneVerse
+  embodied_base:  /mnt/fillipo/zhuziyu/embodied_scan
+  embodied_feat: /mnt/fillipo/zhuziyu/embodied_scan_stage2_feat
+  embodied_vle: /mnt/fillipo/zhuziyu/embodied_scan_vle_data
+
+  EmbodiedVLEOvon:
+    frontier_to_class_prob: 0.5
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLESG3D:
+    frontier_to_class_prob: 0.5
+    train_duplicate: 5
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLEGoat:
+    frontier_to_class_prob: 0.5
+    random_drop_ratio: 0.3
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLEScanRefer:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLEMulti3DRefer:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLEScanQA:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLENr3D:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLESG3DReferScanNet:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLESG3DReferHM3D:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+  EmbodiedVLEHM3DRefer:
+    frontier_to_class_prob: 0.0
+    train_duplicate: 1
+    evaluator: 'EmbodiedVLEEval'
+
+# dataloader details
+dataloader:
+  # This is a per-gpu batchsize
+  batchsize: 16
+  batchsize_eval: 4
+  num_workers: 4
+  
+task: Explore
+data_wrapper: 
+  train: EmbodiedVLEWrapper
+  val: ${data_wrapper.train}
+  test: ${data_wrapper.train}
+  tokenizer: openai/clip-vit-large-patch14
+
+# Training details
+trainer: EmbodiedStage2Trainer
+
+eval:
+  save: False
+  disable_frontier_length: True
+  
+solver:
+  gradient_accumulation_steps: 1
+  lr: 1e-4
+  grad_norm: 10
+  epochs: 30
+  epochs_per_eval: 5
+  optim:
+    name: AdamW
+    args:
+      betas: [0.9, 0.98]
+  sched:
+    name: warmup_cosine
+    args:
+      warmup_steps: 500
+
+model:
+  name: Query3DVLE
+  memories: [prompt, mv, vocab]
+  use_query_score: False
+  hidden_size: 768
+  obj_loc:
+    spatial_dim: 5
+    dim_loc: 6
+    pairwise_rel_type: "center"
+  
+  txt_encoder:
+    name: CLIPLanguageEncoder
+    args:
+      use_projection: True
+      projection_type: "mlp"
+      num_projection_layers: 1
+  
+  image_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size : 768
+      hidden_size: ${model.hidden_size}
+      use_projection: True
+      use_cls_head: False
+      dropout: 0.1
+
+  mv_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size : 768
+      hidden_size: ${model.hidden_size}
+      use_projection: True
+      use_cls_head: False
+      dropout: 0.1
+
+  vocab_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size : 768
+      hidden_size: ${model.hidden_size}
+      use_projection: True
+      use_cls_head: False
+      dropout: 0.1 
+
+  unified_encoder:
+    name: QueryMaskEncoder
+    args:
+      hidden_size: ${model.hidden_size}
+      num_attention_heads: 12
+      num_layers: 4
+      spatial_selfattn: True
+      memories: ${model.memories}
+      structure: "mixed"
+      use_self_mask: False
+      num_blocks: 1 
+
+  heads: [ground, query_cls, decision]
+  ground_head:
+    name: "GroundHead"
+    args:
+      hidden_size: 384
+      input_size: ${model.hidden_size}
+      dropout: 0.3
+    
+  query_cls_head:
+    name: "ClsHead"
+    args:
+      input_size: ${model.hidden_size}
+      hidden_size: 384
+      cls_size: 607
+      dropout: 0.3
+  
+  decision_head:
+    name: "DecisionHead"
+    args:
+      hidden_size: ${model.hidden_size}
+      mlp_size: 256
+      num_output: 2
+
+  
+  loss_list: [ground_loss, query_cls_loss, decision_loss]
+  vis_loss_list: [] 
+
+ 

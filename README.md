@@ -1,4 +1,4 @@
-## <img src='https://pq3d.github.io/file/pq3d-logo.png' width=3%> Unifying 3D Vision-Language Understanding via Promptable Queries
+## Move to Understand a 3D Scene: Bridging Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation
 
 <p align="left">
     <a href='https://arxiv.org/abs/2405.11442'>
@@ -10,44 +10,47 @@
     <a href='https://pq3d.github.io'>
       <img src='https://img.shields.io/badge/Project-Page-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Project Page'>
     </a>
-    <a href='https://huggingface.co/spaces/li-qing/PQ3D-Demo'>
-      <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggigFace'>
-    </a>
+    <!-- <a href='https://huggingface.co/spaces/li-qing/PQ3D-Demo'> -->
+      <!-- <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggigFace'> -->
+    <!-- </a> -->
     <a href='https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link'>
       <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints(TODO)'>
     </a>
 </p>
 
 [Ziyu Zhu](https://zhuziyu-edward.github.io/), 
+[Xilin Wang](),
+[Yixuan Li](),
 [Zhuofan Zhang](https://tongclass.ac.cn/author/zhuofan-zhang/), 
 [Xiaojian Ma](https://jeasinema.github.io/), 
-[Xuesong Niu](https://scholar.google.com/citations?user=iuPSV-0AAAAJ&hl=en),
 [Yixin Chen](https://yixchen.github.io/),
 [Baoxiong Jia](https://buzz-beater.github.io),
+[Wei Liang](),
+[Qian Yu](),
 [Zhidong Deng](https://www.cs.tsinghua.edu.cn/csen/info/1165/4052.htm)📧,
 [Siyuan Huang](https://siyuanhuang.com/)📧,
 [Qing Li](https://liqing-ustc.github.io/)📧
 
-This repository is the official implementation of the ECCV 2024 paper "Unifying 3D Vision-Language Understanding via Promptable Queries".
+This repository is the official implementation of the Arxiv paper "Move to Understand a 3D Scene: Briding Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation".
 
 [Paper](https://arxiv.org/abs/2405.11442) |
 [arXiv](https://arxiv.org/abs/2405.11442) |
 [Project](https://pq3d.github.io) |
-[HuggingFace Demo](https://huggingface.co/spaces/li-qing/PQ3D-Demo) |
 [Checkpoints](https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link)
 
 <div align=center>
-<img src='https://pq3d.github.io/file/teaser.png' width=100%>
+<img src='https://mtu3d.github.io/mtu3d-teaser.png' width=100%>
 </div>
 
 ### News
 - [ 2024.08 ] Release training and evaluation.
-- [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
-- [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation
+<!-- - [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
+- [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation -->
 
 ### Abstract
 
-A unified model for 3D vision-language (3D-VL) understanding is expected to take various scene representations and perform a wide range of tasks in a 3D scene. However, a considerable gap exists between existing methods and such a unified model, due to the independent application of representation and insufficient exploration of 3D multi-task training. In this paper, we introduce PQ3D, a unified model capable of using Promptable Queries to tackle a wide range of 3D-VL tasks, from low-level instance segmentation to high-level reasoning and planning.Tested across ten diverse 3D-VL datasets, This is achieved through three key innovations: (1) unifying various 3D scene representations (i.e., voxels, point clouds, multi-view im- ages) into a shared 3D coordinate space by segment-level grouping, (2) an attention-based query decoder for task-specific information retrieval guided by prompts, and (3) universal output heads for different tasks to support multi-task training. PQ3D demonstrates impressive performance on these tasks, setting new records on most benchmarks. Particularly, PQ3D improves the state- of-the-art on ScanNet200 by 4.9% (AP25), ScanRefer by 5.4% (acc@0.5), Multi3DRefer by 11.7% (F1@0.5), and Scan2Cap by 13.4% (CIDEr@0.5).Moreover, PQ3D supports flexible inference with individual or combined forms of available 3D representations, e.g., solely voxel input
+ Embodied scene understanding requires not only comprehending visual-spatial information that has been observed but also determining where to explore next in the 3D physical world. 
+  Existing 3D Vision-Language (3D-VL) models primarily focus on grounding objects in static observations from 3D reconstruction, such as meshes and point clouds, but lack the ability to actively perceive and explore their environment. To address this limitation, we introduce **M**ove **t**o **U**nderstand (**MTU3D**), a unified framework that integrates active perception with 3D vision-language learning, enabling embodied agents to effectively explore and understand their environment. . Extensive evaluations across various embodied navigation and question-answering benchmarks show that MTU3D outperforms state-of-the-art reinforcement learning and modular navigation approaches by 14\%, 27\%, 11\%, and 3\% in success rate on HM3D-OVON, GOAT-Bench, SG3D, and A-EQA, respectively. MTU3D's versatility enables navigation using diverse input modalities, including categories, language descriptions, and reference images. The deployment on a real robot demonstrates MTU3D's effectiveness in handling real-world data. These findings highlight the importance of bridging visual grounding and exploration for embodied intelligence.
 
 ### Install
 1. Install conda package
@@ -58,16 +61,7 @@ pip3 install torchvision==0.15.1
 pip3 install -r requirements.txt
 ```
 
-2. install pointnet2
-```
-cd modules/third_party
-# PointNet2
-cd pointnet2
-python setup.py install
-cd ..
-```
-
-3. Install Minkowski Engine
+2. Install Minkowski Engine
 ```
 git clone https://github.com/NVIDIA/MinkowskiEngine.git
 conda install openblas-devel -c anaconda
@@ -75,40 +69,72 @@ cd MinkowskiEngine
 python setup.py install --blas_include_dirs=${CONDA_PREFIX}/include --blas=openblas
 ```
 
+3. Install FastSAM, link is here [FastSAM](https://github.com/CASIA-IVA-Lab/FastSAM.git)
+```
+cd hm3d-online
+git clone https://github.com/CASIA-IVA-Lab/FastSAM.git
+cd FastSAM
+pip install -r requirements.txt
+cd ../..
+```
+
+4. Install HabitatSim and HabitatLab
+```
+conda install habitat-sim=0.2.3 headless -c conda-forge -c aihabitat -y
+git clone --branch v0.2.3 git@github.com:facebookresearch/habitat-lab.git
+cd habitat-lab
+pip install -e habitat-lab
+pip install -e habitat-baselines
+```
+
 ### Prepare data
-1. download sceneverse data  from [scene_verse_base](https://github.com/scene-verse/sceneverse?tab=readme-ov-file) and change `data.scene_verse_base` to sceneverse data directory.
-2. download segment level data from [scene_ver_aux](https://drive.google.com/drive/folders/1em0G5S4aH4lCIfnjLxyFO3DV3Rwuwnqh?usp=share_link) and change `data.scene_verse_aux` to download data directory.
-3. download other data from [scene_verse_pred](https://drive.google.com/drive/folders/12BjbhXzV7lON4X0tx3e7DdvZHhI1Q1f2?usp=share_link) and change `data.scene_verse_pred` to download data directory.
+1. download sceneverse data from [scene_verse_base](https://github.com/scene-verse/sceneverse?tab=readme-ov-file) and change `data.scene_verse_base` to sceneverse data directory.
+2. download stage1 data for embodied segmentation training from [stage1]() and change `data.embodied_base` to download data directory.
+3. download feature saved from stage1 from  [stage1_feat](https://drive.google.com/drive/folders/12BjbhXzV7lON4X0tx3e7DdvZHhI1Q1f2?usp=share_link) and change `data.embodied_feat` to download data directory.
+4. download vle data from [vle_stage2]() and change `data.embodied_vle` to download data directory
+5. download hm3d data from [hm3d]() and change `hm3d_data_base_path` in hm3d-online/*.-nav.py
+5. download embodied navigation benchmark data from [embodied-bench]() and change `data_set_path` and `navigation_data_path` in hm3d-online/*.nav.py
+
 
 ### Prepare checkpoints
-1. download PointNet++ from [pointnet](https://drive.google.com/drive/folders/1KSu2z9cOMocQg5yYKUTlk0TlDwJZQMKs?usp=share_link) and change `pretrained_weights_dir` to downloaded directory,
-2. download checkpoint from [stage1](https://drive.google.com/drive/folders/1KHayAzF7XlE3R3cz4YUPoHY_1VJkKYpd?usp=share_link), [stage2](https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link) and change pretrain_ckpt_path to certain checkpoint weight.
+1. download [mtu3d-stage1](), [mtu3d-stage2](), and change `pq3d_stage1_path` and `pq3d_stage2_path` in hm3d-online/*-nav.py
 
-### Run PQ3D
-Stage 1 training for instance segmentation
+
+### Run MTU3D for training
+Stage 1 low-level percetpion training
 ```
-python3 run.py --config-path configs --config-name instseg_sceneverse_gt.yaml
+python3 run.py --config-path configs/embodied-pq3d-final --config-name embodied_scan_instseg.yaml
 ```
+Stage 2 vision-langauge-exploration pre-training
 ```
-python3 run.py --config-path configs --config-name instseg_sceneverse.yaml pretrain_ckpt={ckpt_from_instseg_sceneverser_gt}
+python3 run.py --config-path configs/embodied-pq3d-final --config-name embodied_vle.yaml 
 ```
-Stage 1 evaluation
+Stage 3 navigation dataset specific fine-tuning
 ```
-python3 run.py --config-path configs --config-name instseg_sceneverse.yaml mode=test pretrain_ckp_path={pretrain_ckpt_path}
-```
-Stage 2 training for vl tasks
-```
-python3 run.py --config-path configs --config-name unified_tasks_sceneverse.yaml
-```
-Stage 2 evaluation
-```
-python3 run.py --config-path configs --config-name unified_tasks_sceneverse.yaml mode=test pretrain_ckpt_path={pretrain_ckpt_path}
+python3 run.py --config-path configs/embodied-pq3d-final --config-name embodied_vle.yaml data.train=[{specific_dataset}] pretrain_ckpt_path={stage2_pretrained_path}
 ```
 For multi-gpu training usage, we use four GPU in our experiments.
 ```
 python launch.py --mode ${launch_mode} \
     --qos=${qos} --partition=${partition} --gpu_per_node=4 --port=29512 --mem_per_gpu=80 \
     --config {config}  \
+```
+
+### Run MTU3D for evaluation
+Evaluation for HM3D-ovon
+```
+edit run_nav.sh and use "python3 hm3d-online/ovon-nav.py"
+bash run_nav.sh
+```
+Evaluation for Goat-bench
+```
+edit run_nav.sh and use "python3 hm3d-online/goat-nav.py"
+bash run_nav.sh
+```
+Evaluation for SG3D
+```
+edit run_nav.sh and use "python3 hm3d-online/sg3d-nav.py"
+bash run_nav.sh
 ```
 
 ### Acknowledgement

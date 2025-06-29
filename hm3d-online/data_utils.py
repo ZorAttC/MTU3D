@@ -152,7 +152,7 @@ def batch_to_cuda(batch):
     return batch
 
 class PQ3DModel:
-    def __init__(self, stage1_dir, stage2_dir):
+    def __init__(self, stage1_dir, stage2_dir, min_decision_num=None):
         # get four models, sam, dino, pq3d stage1, pq3d stage2
         # dino
         processor = AutoImageProcessor.from_pretrained('facebook/dinov2-large')
@@ -188,6 +188,7 @@ class PQ3DModel:
         self.tokenizer = AutoTokenizer.from_pretrained("openai/clip-vit-large-patch14")
         # decision params
         self.frontier_selection_mode = 'model'
+        self.min_decision_num = min_decision_num if min_decision_num is not None else 3
     
     def reset(self):
         self.representation_manager.reset()
@@ -512,7 +513,7 @@ class PQ3DModel:
         real_object_locs = query_locs[real_obj_pad_masks]
         frontier_locs = query_locs[~real_obj_pad_masks]
         # get decision
-        if (goto_frontier_probability <= 0.5 and decision_num > 3) or len(frontier_list) == 0:
+        if (goto_frontier_probability <= 0.5 and decision_num > self.min_decision_num) or len(frontier_list) == 0:
             is_object_decision = True
             target_position = real_object_locs[real_object_decision_idx].numpy()[:3]
         else:

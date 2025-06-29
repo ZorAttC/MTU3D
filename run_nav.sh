@@ -1,8 +1,8 @@
 #!/bin/bash
-sleep 1800
+sleep 10
 # Run the Python script
 while true; do
-    python3 hm3d-online/eqa-traj.py
+    python3 hm3d-online/goat-nav.py
     if [ $? -eq 0 ]; then
         break
     fi

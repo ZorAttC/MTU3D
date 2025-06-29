@@ -22,15 +22,18 @@ import random
 data_set_path = "/mnt/fillipo/zhuziyu/embodied_bench_data/our-set/goat_full_set.json"
 navigation_data_path = "/mnt/fillipo/zhuziyu/embodied_bench_data/goat/"
 hm3d_data_base_path = "/mnt/fillipo/ML/zhuofan/data/scene_datasets/hm3d/val"
-pq3d_stage1_path = "/home/zhuziyu/work/saved_models/embodied-pq3d-final/stage1-pretrain-all/"
-pq3d_stage2_path = "/home/zhuziyu/work/saved_models/embodied-pq3d-final-stage2/stage2-fine-tune-goat-image-rerun/"
-output_path = "../data/embodied-pq3d/paper_result/goat-full-fine-tune.json"
+embodied_scan_dir = "/mnt/fillipo/zhuziyu/embodied_scan"
+pq3d_stage1_path = "/mnt/fillipo/zhuziyu/embodied_saved_data/saved_models/embodied-pq3d-final/stage1-pretrain-all"
+pq3d_stage2_path = "/mnt/fillipo/zhuziyu/embodied_saved_data/saved_models/embodied-pq3d-final-stage2/stage2-fine-tune-goat-image-rerun"
+output_path = "./output_dirs/goat-full-finetune-num-1.json"
 enable_visualization = False
+decision_num_min = 3
+visible_radius = 3
 
 # load navigation data
 navigation_data_dict = {'val_seen': {}, 'val_seen_synonyms': {}, 'val_unseen': {}}
 split_list = ['val_seen', 'val_seen_synonyms', 'val_unseen'] 
-train_val_split = json.load(open(os.path.join('/mnt/fillipo/zhuziyu/embodied_scan/', 'HM3D', 'hm3d_annotated_basis.scene_dataset_config.json')))
+train_val_split = json.load(open(os.path.join(embodied_scan_dir, 'HM3D', 'hm3d_annotated_basis.scene_dataset_config.json')))
 raw_scan_ids = set([pa.split('/')[1] for pa in train_val_split['scene_instances']['paths']['.json']])
 for split in split_list:
     data_dir = os.path.join(navigation_data_path, split, 'content')
@@ -73,7 +76,7 @@ for split in split_list:
     
 
 # load pq3d model
-pq3d_model = PQ3DModel(pq3d_stage1_path, pq3d_stage2_path)
+pq3d_model = PQ3DModel(pq3d_stage1_path, pq3d_stage2_path, min_decision_num=decision_num_min)
 
 for split in split_list:
     for cur_data in data_set[split]:
@@ -109,7 +112,7 @@ for split in split_list:
         top_down_map = maps.get_topdown_map_from_sim(sim, map_resolution=map_resolution,  draw_border=False)
         fog_of_war_mask = np.zeros_like(top_down_map)
         area_thres_in_pixels =  convert_meters_to_pixel(9, map_resolution, sim)
-        visibility_dist_in_pixels = convert_meters_to_pixel(2, map_resolution, sim)
+        visibility_dist_in_pixels = convert_meters_to_pixel(visible_radius, map_resolution, sim)
         
         # episode global parameter
         decision_num = 0

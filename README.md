@@ -55,21 +55,26 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 ### Install
 1. Install conda package
 ```
-conda env create --name envname 
+conda env create -n envname python=3.8
 pip3 install torch==2.0.0
 pip3 install torchvision==0.15.1
+python3 -m pip install nvidia-cudnn-cu11==8.7.0.84
 pip3 install -r requirements.txt
 ```
 
 2. Install Minkowski Engine
 ```
 git clone https://github.com/NVIDIA/MinkowskiEngine.git
+sudo apt install python3-distutils
 conda install openblas-devel -c anaconda
 cd MinkowskiEngine
 python setup.py install --blas_include_dirs=${CONDA_PREFIX}/include --blas=openblas
 ```
 
 3. Install FastSAM, link is here [FastSAM](https://github.com/CASIA-IVA-Lab/FastSAM.git)
+
+put checkpoint to `./hm3d-online/FastSAM/FastSAM-x.pt`
+
 ```
 cd hm3d-online
 git clone https://github.com/CASIA-IVA-Lab/FastSAM.git
@@ -119,21 +124,36 @@ python launch.py --mode ${launch_mode} \
     --qos=${qos} --partition=${partition} --gpu_per_node=4 --port=29512 --mem_per_gpu=80 \
     --config {config}  \
 ```
+To debug, use
+```
+python3 ... debug.flag=True debug.debug_size=10
+```
 
 ### Run MTU3D for evaluation
-Evaluation for HM3D-ovon
 ```
-edit run_nav.sh and use "python3 hm3d-online/ovon-nav.py"
+mkdir output_dirs
+export PYTHONPATH=./:./hm3d-online:./hm3d-online/FastSAM
+export MAGNUM_LOG=quiet HABITAT_SIM_LOG=quiet
+export YOLO_VERBOSE=False
+```
+#### Evaluation for HM3D-ovon
+Change path in hm3d-nav.py.
+Edit run_nav.sh.
+```
 bash run_nav.sh
 ```
-Evaluation for Goat-bench
+
+#### Evaluation for Goat-bench
+Change path in goat-nav.py.
+Edit run_nav.sh.
 ```
-edit run_nav.sh and use "python3 hm3d-online/goat-nav.py"
 bash run_nav.sh
 ```
-Evaluation for SG3D
+
+#### Evaluation for SG3D
+Change path in sg3d-nav.py.
+Edit run_nav.sh.
 ```
-edit run_nav.sh and use "python3 hm3d-online/sg3d-nav.py"
 bash run_nav.sh
 ```
 

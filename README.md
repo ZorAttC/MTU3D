@@ -163,10 +163,10 @@ We would like to thank the authors of [Vil3dref](https://github.com/cshizhe/vil3
 
 ### Citation:
 ```
-@article{zhu2024unifying,
-    title={Unifying 3D Vision-Language Understanding via Promptable Queries},
-    author={Zhu, Ziyu and Zhang, Zhuofan and Ma, Xiaojian and Niu, Xuesong and Chen, Yixin and Jia, Baoxiong and Deng, Zhidong and Huang, Siyuan and Li, Qing},
-    journal={arXiv preprint arXiv:2405.11442},
-    year={2024}
+@article{zhu2025mtu,
+  title = {Move to Understand a 3D Scene: Bridging Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation},
+  author = {Zhu, Ziyu and Wang, Xilin and Li, Yixuan and Zhang, Zhuofan and Ma, Xiaojian and Chen, Yixin and Jia, Baoxiong and Liang, Wei and Yu, Qian and Deng, Zhidong and Huang, Siyuan and Li, Qing},
+  journal = {International Conference on Computer Vision (ICCV)},
+  year = {2025}  
 }
 ```

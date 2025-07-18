@@ -43,7 +43,8 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 </div>
 
 ### News
-- [ 2024.08 ] Release training and evaluation.
+- [ 2025.08 ] Release training and evaluation.
+- [ 2025.08 ] Release data.
 <!-- - [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
 - [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation -->
 
@@ -94,11 +95,12 @@ pip install -e habitat-baselines
 
 ### Prepare data
 1. download sceneverse data from [scene_verse_base](https://github.com/scene-verse/sceneverse?tab=readme-ov-file) and change `data.scene_verse_base` to sceneverse data directory.
-2. download stage1 data for embodied segmentation training from [stage1]() and change `data.embodied_base` to download data directory.
-3. download feature saved from stage1 from  [stage1_feat](https://drive.google.com/drive/folders/12BjbhXzV7lON4X0tx3e7DdvZHhI1Q1f2?usp=share_link) and change `data.embodied_feat` to download data directory.
-4. download vle data from [vle_stage2]() and change `data.embodied_vle` to download data directory
-5. download hm3d data from [hm3d]() and change `hm3d_data_base_path` in hm3d-online/*.-nav.py
-5. download embodied navigation benchmark data from [embodied-bench]() and change `data_set_path` and `navigation_data_path` in hm3d-online/*.nav.py
+2. download stage1 data for embodied segmentation training from [stage1](https://huggingface.co/datasets/bigai/MTU3D) and change `data.embodied_base` to download data directory.
+3. download feature saved from stage1 from [stage1_feat](https://huggingface.co/datasets/bigai/MTU3D) and change `data.embodied_feat` to download data directory.
+4. download vle data from [vle_stage2](https://huggingface.co/datasets/bigai/MTU3D) and change `data.embodied_vle` to download data directory.
+5. change `embodied_scan_dir` in hm3d-online/*-nav.py to stage1 data directory.
+6. download hm3d data from [hm3d](https://aihabitat.org/datasets/hm3d/) and change `hm3d_data_base_path` in hm3d-online/*.-nav.py.
+7. download embodied navigation benchmark data from [embodied-bench](https://huggingface.co/datasets/bigai/MTU3D) and change `data_set_path` and `navigation_data_path` in hm3d-online/*.nav.py.
 
 
 ### Prepare checkpoints

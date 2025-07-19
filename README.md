@@ -44,7 +44,7 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 
 ### News
 - [ 2025.08 ] Release training and evaluation.
-- [ 2025.08 ] Release data.
+- [ 2025.08 ] Release data and checkpoints.
 <!-- - [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
 - [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation -->
 
@@ -104,7 +104,7 @@ pip install -e habitat-baselines
 
 
 ### Prepare checkpoints
-1. download [mtu3d-stage1](), [mtu3d-stage2](), and change `pq3d_stage1_path` and `pq3d_stage2_path` in hm3d-online/*-nav.py
+1. download [mtu3d-ckeckpoints](https://huggingface.co/bigai/MTU3D), and change `pq3d_stage1_path` and `pq3d_stage2_path` in hm3d-online/*-nav.py.
 
 
 ### Run MTU3D for training

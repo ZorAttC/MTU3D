@@ -18,12 +18,12 @@ import random
 import sys
 
 # hyperparameter
-data_set_path = "/mnt/fillipo/zhuziyu/embodied_bench_data/our-set/ovon_full_set.json"
-navigation_data_path = "/mnt/fillipo/zhuziyu/embodied_bench_data/ovon/"
-hm3d_data_base_path = "/mnt/fillipo/ML/zhuofan/data/scene_datasets/hm3d/val"
-embodied_scan_dir = "/mnt/fillipo/zhuziyu/embodied_scan"
-pq3d_stage1_path = "/mnt/fillipo/zhuziyu/embodied_saved_data/saved_models/embodied-pq3d-final/stage1-pretrain-all"
-pq3d_stage2_path = "/mnt/fillipo/zhuziyu/embodied_saved_data/saved_models/embodied-pq3d-final-stage2/stage2-fine-tune-ovon"
+data_set_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_bench_data/our-set/ovon_full_set.json"
+navigation_data_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_bench_data/ovon/"
+hm3d_data_base_path = "/hdd/caoyuhao/3D_data/hm3d/scene_datasets/hm3d/val"
+embodied_scan_dir = "/hdd/caoyuhao/3D_data/MTU3D/embodied_scan"
+pq3d_stage1_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all"
+pq3d_stage2_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage2-fine-tune-ovon"
 output_path = "./output_dirs/ovon-full-finetune-num-1.json"
 enable_visualization = False
 decision_num_min = 3
@@ -208,7 +208,7 @@ for split in split_list:
         # Save color_list to video
         if enable_visualization:
             height, width, layers = global_color_list[0].shape
-            video = cv2.VideoWriter(f'video.avi', cv2.VideoWriter_fourcc(*'DIVX'), 2, (width, height))
+            video = cv2.VideoWriter(f'video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 2, (width, height))
             for color_frame in global_color_list:
                 color_frame = cv2.cvtColor(color_frame, cv2.COLOR_RGB2BGR)
                 video.write(color_frame)

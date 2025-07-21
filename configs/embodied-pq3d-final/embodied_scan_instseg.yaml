@@ -18,12 +18,14 @@ debug:
 
 logger:
   name: wandb
-  entity: optimus-prime-3dvl
+  entity: cyh200206
   autoname: True
 
 # dataset details
 data:
-  train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
+  # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
+  train: [ 'EmbodiedScanInstSegScanNet']
+
   val: ['EmbodiedScanInstSegScanNet']
   test: ['EmbodiedScanInstSegScanNet']
 
@@ -32,6 +34,7 @@ data:
     load_segment_info: True
     load_image_segment_feat: True
     load_global_pc: True
+    process_num: 1
   
   instseg_options:
     num_labels: 200

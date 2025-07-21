@@ -18,7 +18,7 @@ debug:
 
 logger:
   name: wandb
-  entity: optimus-prime-3dvl
+  entity: cyh200206
   autoname: True
 
 # dataset details
@@ -41,7 +41,7 @@ data:
     use_open_vocabulary: True
     num_queries: 120
     query_sample_strategy: 'random_segment'
-    image_augmentations_path: configs/instseg/augmentation/albumentations_aug.yaml
+  image_augmentations_path: configs/instseg/augmentation/albumentations_aug.yaml
     volume_augmentations_path: configs/instseg/augmentation/volumentations_aug.yaml
     compute_local_box: True
   

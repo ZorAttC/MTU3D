@@ -143,3 +143,4 @@ tmp
 *.png
 *.avi
 *.npy
+outputs_dirs/*

@@ -1,19 +1,19 @@
 ## Move to Understand a 3D Scene: Bridging Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation
 
 <p align="left">
-    <a href='https://arxiv.org/abs/2405.11442'>
+    <a href='https://www.arxiv.org/abs/2507.04047'>
       <img src='https://img.shields.io/badge/Paper-PDF-red?style=plastic&logo=adobeacrobatreader&logoColor=red' alt='Paper PDF'>
     </a>
-    <a href='https://arxiv.org/abs/2405.11442'>
+    <a href='https://www.arxiv.org/abs/2507.04047'>
       <img src='https://img.shields.io/badge/Paper-arXiv-green?style=plastic&logo=arXiv&logoColor=green' alt='Paper arXiv'>
     </a>
-    <a href='https://pq3d.github.io'>
+    <a href='https://mtu3d.github.io/'>
       <img src='https://img.shields.io/badge/Project-Page-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Project Page'>
     </a>
     <!-- <a href='https://huggingface.co/spaces/li-qing/PQ3D-Demo'> -->
       <!-- <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggigFace'> -->
     <!-- </a> -->
-    <a href='https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link'>
+    <a href='https://huggingface.co/bigai/MTU3D'>
       <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints(TODO)'>
     </a>
 </p>

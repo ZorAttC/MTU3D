@@ -14,7 +14,7 @@
       <!-- <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggigFace'> -->
     <!-- </a> -->
     <a href='https://huggingface.co/bigai/MTU3D'>
-      <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints(TODO)'>
+      <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints'>
     </a>
 </p>
 
@@ -33,10 +33,10 @@
 
 This repository is the official implementation of the Arxiv paper "Move to Understand a 3D Scene: Briding Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation".
 
-[Paper](https://arxiv.org/abs/2405.11442) |
-[arXiv](https://arxiv.org/abs/2405.11442) |
-[Project](https://pq3d.github.io) |
-[Checkpoints](https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link)
+[Paper](https://www.arxiv.org/abs/2507.04047) |
+[arXiv](https://www.arxiv.org/abs/2507.04047) |
+[Project](https://mtu3d.github.io) |
+[Checkpoints](https://huggingface.co/bigai/MTU3D)
 
 <div align=center>
 <img src='https://mtu3d.github.io/mtu3d-teaser.png' width=100%>

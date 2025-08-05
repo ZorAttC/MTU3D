@@ -1,0 +1,9 @@
+opencv-python
+omegaconf
+numba
+ultralytics
+tqdm
+numpy-quaternion
+attrs
+scipy
+scikit-learn

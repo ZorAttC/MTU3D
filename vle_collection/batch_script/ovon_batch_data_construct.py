@@ -383,7 +383,7 @@ def processs_split(args, split):
         if os.path.exists(os.path.join(input_scene_dir, scene_id, scene_id.split('-')[1] + '.semantic.txt')):
             valid_scene_list.append(scene_id)
     valid_scene_list.sort()
-    valid_scene_list = valid_scene_list[:5]
+    # valid_scene_list = valid_scene_list[:5]
     # valid_scene_list.append('00407-NPHxDe6VeCc')
     print(f"Total scene number: ", len(valid_scene_list))
     print(f"Start Time of ALL on {split}", datetime.datetime.now())

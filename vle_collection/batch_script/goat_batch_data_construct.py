@@ -492,7 +492,7 @@ def process_split(args, split):
         if os.path.exists(os.path.join(input_scene_dir, scene_id, scene_id.split('-')[1] + '.semantic.txt')):
             valid_scene_list.append(scene_id)
     valid_scene_list.sort()
-    valid_scene_list = valid_scene_list[:5]
+    # valid_scene_list = valid_scene_list[:5]
     # valid_scene_list.append('00407-NPHxDe6VeCc')
     print(f"Total scene number: ", len(valid_scene_list))
     start_time = datetime.datetime.now()
@@ -510,8 +510,8 @@ def process_split(args, split):
 
 
 def main(args):
-    # split_list = ['train', 'val_seen', 'val_unseen', 'val_seen_synonyms']
-    split_list = ['val_seen']
+    split_list = ['train', 'val_seen', 'val_unseen', 'val_seen_synonyms']
+    # split_list = ['val_seen']
     for split in split_list:
         process_split(args, split) 
 

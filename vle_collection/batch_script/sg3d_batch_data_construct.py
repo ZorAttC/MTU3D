@@ -86,7 +86,7 @@ def handle_scene(
             )
             decision_dict[epi_id] = decision
         except Exception as e:
-            exception_dict[epi_id] = e
+            exception_dict[epi_id] = str(e)
             continue
 
     sim.__del__()
@@ -453,7 +453,7 @@ def main(args):
         if os.path.exists(os.path.join(input_scene_dir, scene_id, scene_id.split('-')[1] + '.semantic.txt')):
             valid_scene_list.append(scene_id)
     valid_scene_list.sort()
-    valid_scene_list = valid_scene_list[:5]
+    # valid_scene_list = valid_scene_list[:5]
     # valid_scene_list.append('00407-NPHxDe6VeCc')
     print(f"Total scene number: ", len(valid_scene_list))
     start_time = datetime.datetime.now()
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_scene_dir", type=str, default='data/hm3d')
     parser.add_argument("--output_dir", type=str, default='tmp/sg3d')
-    parser.add_argument("--split", type=str, default='val')
+    parser.add_argument("--split", type=str, default='val') # train, val
     parser.add_argument("--num_workers", type=int, default=10)
     parser.add_argument("--chunksize", type=int, default=1)
     args = parser.parse_args()

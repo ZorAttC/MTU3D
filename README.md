@@ -43,8 +43,9 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 </div>
 
 ### News
-- [ 2025.08 ] Release training and evaluation.
-- [ 2025.08 ] Release data and checkpoints.
+- [ 2025.07 ] Release training and evaluation.
+- [ 2025.07 ] Release data and checkpoints.
+- [ 2025.08 ] Release data collection scripts.
 <!-- - [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
 - [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation -->
 
@@ -56,7 +57,8 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 ### Install
 1. Install conda package
 ```
-conda env create -n envname python=3.8
+conda create -n envname python=3.8
+conda activate envname
 pip3 install torch==2.0.0
 pip3 install torchvision==0.15.1
 python3 -m pip install nvidia-cudnn-cu11==8.7.0.84
@@ -158,6 +160,9 @@ Edit run_nav.sh.
 ```
 bash run_nav.sh
 ```
+
+### Data Collection
+We provide data collection scripts in **vle_collection** folder.
 
 ### Acknowledgement
 We would like to thank the authors of [Vil3dref](https://github.com/cshizhe/vil3dref), [Mask3d](https://github.com/JonasSchult/Mask3D), [Openscene](https://github.com/pengsongyou/openscene), [Xdecoder](https://github.com/microsoft/X-Decoder), and [3D-VisTA](https://github.com/3d-vista/3D-VisTA) for their open-source release.

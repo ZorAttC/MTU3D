@@ -1,4 +1,4 @@
-name: vle
+name: vle_collection
 channels:
   - nvidia/label/cuda-11.8.0
   - pytorch
@@ -12,4 +12,5 @@ dependencies:
   - numpy=1.23.5
   - torchaudio=2.1.1
   - torchvision=0.16.1
+  - cmake=3.14.0
   - tqdm

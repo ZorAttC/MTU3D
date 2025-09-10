@@ -89,6 +89,7 @@ solver:
 
 eval:
   name: EmbodiedScanInstSegEvalEmpty
+  dataset_name: 
   pass_kwargs: True
   save: False
   ignore_label: ${data.instseg_options.ignore_label}

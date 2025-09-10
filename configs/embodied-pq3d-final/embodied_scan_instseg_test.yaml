@@ -1,16 +1,16 @@
 # Experiment general info
 name: "Embodied-PQ3D"
 base_dir: "outputs"
-exp_dir: ""
+exp_dir: "cyh_eval"
 note: ""
 naming_keywords: ["note", "time"]
 
 rng_seed: 42
 num_gpu: 1
-mode: "train"
+mode: "test"
 
 resume: False
-pretrain_ckpt_path: ''
+pretrain_ckpt_path: '/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all'
 
 debug:
   flag: False
@@ -90,9 +90,13 @@ solver:
       warmup_steps: 100
 
 eval:
-  name: EmbodiedScanInstSegEvalEmpty
+#EmbodiedScanInstSegEvalGTMerge
+#EmbodiedScanInstSegEvalBoxMergeOpenVocab
+
+  name: EmbodiedScanInstSegEvalBoxMerge
+  dataset_name: ScanNet
   pass_kwargs: True
-  save: False
+  save: True
   ignore_label: ${data.instseg_options.ignore_label}
   filter_out_classes: [0, 2, 35]
   compute_loss_eval: False

@@ -21,7 +21,7 @@ import sys
 data_set_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_bench_data/our-set/ovon_full_set.json"
 navigation_data_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_bench_data/ovon/"
 hm3d_data_base_path = "/hdd/caoyuhao/3D_data/hm3d/scene_datasets/hm3d/val"
-embodied_scan_dir = "/hdd/caoyuhao/3D_data/MTU3D/embodied_scan"
+embodied_scan_dir = "/hdd/public_datasets/embodied_scan/"
 pq3d_stage1_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all"
 pq3d_stage2_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage2-fine-tune-ovon"
 output_path = "./output_dirs/ovon-full-finetune-num-1.json"

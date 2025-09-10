@@ -303,9 +303,22 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         voxel2segment = data_dict['voxel2segment']
         segment_to_full_maps = data_dict['segment_to_full_maps']
         raw_coordinates = data_dict['raw_coordinates']
+        print("pred_masks shape:", [x.shape for x in pred_masks])
+        print("pred_logits shape:", [x.shape for x in pred_logits])
+        print("pred_boxes shape:", [x.shape for x in pred_boxes])
+        print("pred_scores shape:", [x.shape for x in pred_scores])
+        print("pred_feats shape:", [x.shape for x in pred_feats])
+        print("pred_embeds shape:", [x.shape for x in pred_embeds])
+        print("query_pad_masks shape:", [x.shape for x in query_pad_masks])
+        print("voxel_to_full_maps shape:", [x.shape for x in voxel_to_full_maps])
+        print("voxel2segment shape:", [x.shape for x in voxel2segment])
+        print("segment_to_full_maps shape:", [x.shape for x in segment_to_full_maps])
+        print("raw_coordinates shape:", [x.shape for x in raw_coordinates])
+
         assert len(pred_masks) == 1
         for bid in range(len(pred_masks)):
             # get all stuff
+            # import pdb; pdb.set_trace()
             masks = pred_masks[bid].detach().cpu()[voxel2segment[bid].cpu()][:, query_pad_masks[bid].cpu()]
             logits = pred_logits[bid].detach().cpu()[query_pad_masks[bid].cpu()] # (q, 201)
             boxes = pred_boxes[bid].detach().cpu()[query_pad_masks[bid].cpu()] # (q, 6)
@@ -337,6 +350,14 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
             feats = feats.numpy()
             embeds = embeds.numpy()
             # merge
+            print("raw_coordinates:", raw_coordinates[bid].shape)
+            print("masks:", masks.shape)
+            print("classes:", classes.shape)
+            print("scores:", scores.shape)
+            print("mask_scores:", mask_scores.shape)
+            print("boxes:", boxes.shape)
+            print("feats:", feats.shape)
+            print("embeds:", embeds.shape)
             predict_dict_list = [
             {
                 'point_cloud': raw_coordinates[bid],
@@ -386,6 +407,13 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
             is_best = False
         eval_results['target_metric'] = eval_results[self.target_metric]
         eval_results['best_result'] = self.best_result
+        # save results
+        if self.save:
+            eval_results['scan_id'] = list(self.preds.keys())
+            eval_results['preds'] = self.preds
+            save_path = self.save_dir / f"{self.dataset_name}_eval_results.json"
+            with open(save_path, 'w') as f:
+                json.dump(eval_results, f, indent=4)
         # clean
         gc.collect()
         torch.cuda.empty_cache()
@@ -473,7 +501,9 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
         voxel2segment = data_dict['voxel2segment']
         segment_to_full_maps = data_dict['segment_to_full_maps']
         raw_coordinates = data_dict['raw_coordinates']
-        assert len(pred_masks) == 1
+
+        
+
         for bid in range(len(pred_masks)):
             # get all stuff
             masks = pred_masks[bid].detach().cpu()[voxel2segment[bid].cpu()][:, query_pad_masks[bid].cpu()]

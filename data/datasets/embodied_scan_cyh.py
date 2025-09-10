@@ -479,6 +479,7 @@ class EmbodiedScanInstseg_cyh(EmbodiedScanBase):
         
         if 'image_segment_feat' in self.scan_data[scan_id]['sub_frames'][sub_frame_id].keys():
             cur_segment_image = torch.from_numpy(deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['image_segment_feat']))
+            
             data_dict['mv_seg_fts'] = cur_segment_image
             data_dict['mv_seg_pad_masks'] = torch.ones(cur_segment_image.shape[0], dtype=torch.bool)
         

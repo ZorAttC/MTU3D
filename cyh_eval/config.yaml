@@ -1,0 +1,180 @@
+name: Embodied-PQ3D
+base_dir: outputs
+exp_dir: !!python/object/apply:pathlib.PosixPath
+- cyh_eval
+note: ''
+naming_keywords:
+- note
+- time
+rng_seed: 42
+num_gpu: 1
+mode: test
+resume: false
+pretrain_ckpt_path: /hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all
+debug:
+  flag: false
+  debug_size: 10
+logger:
+  name: wandb
+  entity: cyh200206
+  autoname: true
+  run_id: lgbggk5u
+data:
+  train:
+  - EmbodiedScanInstSegScanNet
+  val:
+  - EmbodiedScanInstSegScanNet
+  test:
+  - EmbodiedScanInstSegScanNet
+  load_all_dataset_once: false
+  load_scan_options:
+    load_pc_info: true
+    load_segment_info: true
+    load_image_segment_feat: true
+    load_global_pc: true
+  instseg_options:
+    num_labels: 200
+    ignore_label: -100
+    filter_out_classes:
+    - 0
+    - 2
+    - 35
+    voxel_size: 0.02
+    use_open_vocabulary: true
+    num_queries: 120
+    query_sample_strategy: random_segment
+    image_augmentations_path: configs/instseg/augmentation/albumentations_aug.yaml
+    volume_augmentations_path: configs/instseg/augmentation/volumentations_aug.yaml
+    compute_local_box: true
+  EmbodiedScanInstSegHM3D:
+    load_frame_interval: 10
+    val_load_scan_max_num: 10
+  EmbodiedScanInstSegScanNet:
+    load_frame_interval: 1
+    val_load_scan_max_num: 10
+  scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan
+dataloader:
+  batchsize: 16
+  batchsize_eval: 1
+  num_workers: 4
+task: InstSeg
+data_wrapper: EmbodiedScanInstSegDatasetWrapper
+trainer: EmbodiedStage1Trainer
+solver:
+  gradient_accumulation_steps: 1
+  lr: 0.0001
+  grad_norm: 80
+  epochs: 60
+  epochs_per_eval: 60
+  optim:
+    name: AdamW
+    args:
+      betas:
+      - 0.9
+      - 0.98
+  sched:
+    name: warmup_cosine
+    args:
+      warmup_steps: 100
+eval:
+  name: EmbodiedScanInstSegEvalBoxMerge
+  dataset_name: ScanNet
+  pass_kwargs: true
+  save: true
+  ignore_label: -100
+  filter_out_classes:
+  - 0
+  - 2
+  - 35
+  compute_loss_eval: false
+model:
+  name: EmbodiedPQ3DInstSegModel
+  memories:
+  - voxel
+  - mv
+  hidden_size: 768
+  init_query_by_feat: true
+  add_geometry_to_segment: true
+  obj_loc:
+    spatial_dim: 5
+    dim_loc: 3
+    pairwise_rel_type: center
+  voxel_encoder:
+    name: PCDMask3DSegLevelEncoder
+    args:
+      backbone_kwargs:
+        config:
+          dialations:
+          - 1
+          - 1
+          - 1
+          - 1
+          conv1_kernel_size: 5
+          bn_momentum: 0.02
+        in_channels: 3
+        out_channels: 200
+        out_fpn: true
+      freeze_backbone: false
+      hlevels:
+      - 0
+      - 1
+      - 2
+      - 3
+      hidden_size: 768
+      dropout: 0.1
+  mv_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size: 1024
+      hidden_size: 768
+      use_projection: true
+      use_cls_head: false
+      dropout: 0.1
+  unified_encoder:
+    name: QueryMaskEncoder
+    args:
+      hidden_size: 768
+      num_attention_heads: 12
+      num_layers: 4
+      spatial_selfattn: true
+      memories:
+      - voxel
+      - mv
+      structure: parallel
+      use_self_mask: true
+      num_blocks: 1
+  heads:
+  - mask
+  - openvocab
+  mask_head:
+    name: MaskHeadSegLevelWithBox
+    args:
+      hidden_size: 768
+      num_targets: 201
+      memories_for_match:
+      - voxel
+      - mv
+      filter_out_classes: []
+  openvocab_head:
+    name: OpenVocabHead
+    args:
+      hidden_dim: 768
+      out_dim: 768
+  loss_list:
+  - EmbodiedScanInstSegLoss
+  vis_loss_list: []
+  EmbodiedScanInstSegLoss:
+    cost_class: 0.5
+    cost_score: 0.5
+    cost_mask: 1
+    cost_dice: 1
+    cost_box: 1
+    cost_open_vocab: 1
+    score_weight:
+    - 0.1
+    - 1
+    matcher:
+      cost_score: 0.5
+      cost_mask: 1.0
+      cost_dice: 1.0

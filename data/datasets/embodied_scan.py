@@ -49,6 +49,7 @@ class EmbodiedScanBase(Dataset, ABC):
         self.base_dir = cfg.data.scene_verse_base
         self.embodied_base_dir = cfg.data.embodied_base
         self.load_scan_options = cfg.data.get('load_scan_options', {})
+        self.load_all_dataset_once = cfg.data.get('load_all_dataset_once', True)
         # label converter for scannet
         self.int2cat = json.load(open(os.path.join(self.base_dir,
                                             "ScanNet/annotations/meta_data/scannetv2_raw_categories.json"),
@@ -114,7 +115,11 @@ class EmbodiedScanBase(Dataset, ABC):
         return scan_ids
         
     def init_scan_data(self):
-        self.scan_data = self._load_scans(self.scan_ids)
+        if self.load_all_dataset_once:
+            self.scan_data = self._load_scans(self.scan_ids)
+        else:
+            # Initialize empty scan_data dict for lazy loading
+            self.scan_data = {}
         
     def _load_scans(self, scan_ids):
         process_num = self.load_scan_options.get('process_num', 0)
@@ -213,6 +218,18 @@ class EmbodiedScanBase(Dataset, ABC):
             one_scan['instance_labels_global'] = instance_labels
                     
         return (scan_id, one_scan)
+    
+    def _get_scan_data(self, scan_id):
+        """Get scan data for a specific scan_id, loading on demand if necessary"""
+        if self.load_all_dataset_once:
+            return self.scan_data[scan_id]
+        else:
+            # Check if already loaded
+            if scan_id not in self.scan_data:
+                # Load single scan on demand
+                _, one_scan = self._load_one_scan(scan_id)
+                self.scan_data[scan_id] = one_scan
+            return self.scan_data[scan_id]
 
 @DATASET_REGISTRY.register()
 class EmbodiedScanInstseg(EmbodiedScanBase):
@@ -253,13 +270,35 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         # init data
         self.scan_ids = self._load_split(self.cfg, self.split)
         self.init_scan_data()
-        self.extract_inst_info()
+        if self.load_all_dataset_once:
+            self.extract_inst_info()
         # build data id mapper, one scene has many sub frame
         self.data_id_mapper = {}
-        for scan_id in self.scan_ids:
-            sub_frame_ids = sorted(list(self.scan_data[scan_id]['sub_frames'].keys()))
-            for sub_frame_id in sub_frame_ids:
-                self.data_id_mapper[len(self.data_id_mapper)] = (scan_id, sub_frame_id) 
+        if self.load_all_dataset_once:
+            for scan_id in self.scan_ids:
+                sub_frame_ids = sorted(list(self.scan_data[scan_id]['sub_frames'].keys()))
+                for sub_frame_id in sub_frame_ids:
+                    self.data_id_mapper[len(self.data_id_mapper)] = (scan_id, sub_frame_id)
+        else:
+            # For lazy loading, we need to build mapper by examining available files
+            for scan_id in self.scan_ids:
+                if self.dataset_name == 'ScanNet':
+                    sub_frame_list = os.listdir(os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id))
+                elif self.dataset_name == 'HM3D':
+                    meta_path = os.path.join(self.embodied_base_dir, 'HM3D', 'meta', scan_id + ".json")
+                    if os.path.exists(meta_path):
+                        meta_info = json.load(open(meta_path))
+                        sub_frame_list = []
+                        for sub_frame_id, ratio in meta_info.items():
+                            if ratio < self.load_scan_options.get('max_invalid_point_ratio', 5):
+                                sub_frame_list.append(sub_frame_id + ".bin")
+                    else:
+                        sub_frame_list = []
+                
+                sub_frame_ids = [int(sub_frame.split('.')[0]) for sub_frame in sub_frame_list[::self.load_frame_interval]]
+                sub_frame_ids = sorted(sub_frame_ids)
+                for sub_frame_id in sub_frame_ids:
+                    self.data_id_mapper[len(self.data_id_mapper)] = (scan_id, sub_frame_id) 
         
     def __len__(self):
         return len(self.data_id_mapper)
@@ -269,18 +308,24 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         data_dict = self.get_scene(scan_id, sub_frame_id)
         return data_dict
 
-    def extract_inst_info(self):
-        for scan_id in self.scan_ids:
-            if self.scan_data[scan_id].get("extract_inst_info", False):
+    def extract_inst_info(self, scan_ids=None):
+        if scan_ids is None:
+            scan_ids = self.scan_ids
+        elif isinstance(scan_ids, str):
+            scan_ids = [scan_ids]
+            
+        for scan_id in scan_ids:
+            scan_data = self._get_scan_data(scan_id)
+            if scan_data.get("extract_inst_info", False):
                 continue
-            for sub_frame_id in self.scan_data[scan_id]['sub_frames'].keys():
+            for sub_frame_id in scan_data['sub_frames'].keys():
                 # load useful data
-                scan_data = self.scan_data[scan_id]['sub_frames'][sub_frame_id]
-                pcds = scan_data['pcds']
-                segment_id = scan_data['segment_id']
-                instance_labels = scan_data['instance_labels']
-                inst_to_label = self.scan_data[scan_id]['inst_to_label']
-                inst_to_text_label = self.scan_data[scan_id]['inst_to_text_label']
+                scan_data_frame = scan_data['sub_frames'][sub_frame_id]
+                pcds = scan_data_frame['pcds']
+                segment_id = scan_data_frame['segment_id']
+                instance_labels = scan_data_frame['instance_labels']
+                inst_to_label = scan_data['inst_to_label']
+                inst_to_text_label = scan_data['inst_to_text_label']
                 # build semantic labels in scannet200
                 # 0-199 for ordinary ones, self.ignore_label for undefined semantic and no object
                 sem_labels = np.zeros(pcds.shape[0]) + self.ignore_label
@@ -291,7 +336,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
                             continue
                         sem_labels[mask] = int(self.label_converter.raw_name_to_scannet_raw_id[inst_to_label[inst_id]])
                 sem_labels = self.map_to_scannet200_id(sem_labels).astype(int)
-                scan_data['sem_labels'] = sem_labels
+                scan_data_frame['sem_labels'] = sem_labels
                 # build inst label mapper to map inst label to 0...max
                 inst_label_mapper = {}
                 max_inst_id = 0
@@ -301,9 +346,9 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
                         max_inst_id += 1
                     else:
                         inst_label_mapper[inst_id] = -1 # -1 for no object, so continuous id is -1, 0, 1,... max_obj
-                scan_data['inst_label_mapper'] = inst_label_mapper
+                scan_data_frame['inst_label_mapper'] = inst_label_mapper
                 instance_labels_continous = np.vectorize(lambda x: inst_label_mapper.get(x, x))(instance_labels)
-                scan_data['instance_labels_continuous'] = instance_labels_continous.astype(int)
+                scan_data_frame['instance_labels_continuous'] = instance_labels_continous.astype(int)
                 # get unique instances, indices same shape with unique inst ids, inverse indices same shape with instance labels
                 unique_inst_ids, indices, inverse_indices = np.unique(instance_labels_continous, return_index=True, return_inverse=True)
                 unique_inst_labels = sem_labels[indices]
@@ -341,8 +386,8 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
                     'segment_labels': torch.LongTensor(segment_labels), # 0-201
                     'instance_text_labels': instance_text_labels # ['class', ...]
                 }
-                scan_data['inst_info'] = inst_info
-            self.scan_data[scan_id]['extract_inst_info'] = True
+                scan_data_frame['inst_info'] = inst_info
+            scan_data['extract_inst_info'] = True
     
     def sample_query(self, voxel_coordinates, coordinates, obj_center, segment_center):
         if self.query_sample_strategy == 'fps':
@@ -363,20 +408,26 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
             raise NotImplementedError(f'{self.query_sample_strategy} is not implemented')
 
     def get_scene(self, scan_id, sub_frame_id):
+        # Ensure scan data is loaded and instance info is extracted
+        scan_data = self._get_scan_data(scan_id)
+        if not scan_data.get("extract_inst_info", False):
+            self.extract_inst_info([scan_id])
+            scan_data = self._get_scan_data(scan_id)  # Get updated data
+        
         # load local information
-        pcds = deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['pcds'])
+        pcds = deepcopy(scan_data['sub_frames'][sub_frame_id]['pcds'])
         coordinates = pcds[:, :3]
         color = (pcds[:, :3:] + 1) * 127.5
-        point2seg_id = deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['segment_id'])
-        sem_labels = deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['sem_labels']) # self.ignore_label for undefined semantic
-        inst_label = deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['instance_labels_continuous']) # -1 for no object, so continuous id is -1, 0, 1,... max_obj
+        point2seg_id = deepcopy(scan_data['sub_frames'][sub_frame_id]['segment_id'])
+        sem_labels = deepcopy(scan_data['sub_frames'][sub_frame_id]['sem_labels']) # self.ignore_label for undefined semantic
+        inst_label = deepcopy(scan_data['sub_frames'][sub_frame_id]['instance_labels_continuous']) # -1 for no object, so continuous id is -1, 0, 1,... max_obj
         labels = np.concatenate([sem_labels.reshape(-1, 1), inst_label.reshape(-1, 1)], axis=1)
         if self.compute_local_box:
             # load global information
-            global_pcds = deepcopy(self.scan_data[scan_id]['pcds_global'])
+            global_pcds = deepcopy(scan_data['pcds_global'])
             global_coordinates = global_pcds[:, :3]
             global_color = (global_pcds[:, :3:] + 1) * 127.5
-            global_inst_labels = deepcopy(self.scan_data[scan_id]['instance_labels_global'])
+            global_inst_labels = deepcopy(scan_data['instance_labels_global'])
             # concat 
             coordinates = np.concatenate([coordinates, global_coordinates], axis=0)
             color = np.concatenate([color, global_color], axis=0)
@@ -424,7 +475,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         coordinates = torch.from_numpy(coordinates).float()
 
         # Calculate object centers and segment centers
-        instance_info = deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['inst_info'])
+        instance_info = deepcopy(scan_data['sub_frames'][sub_frame_id]['inst_info'])
         instance_ids = instance_info['instance_ids']
         point2inst_id = labels[:, -1]
         point2inst_id[point2inst_id == -1] = (instance_ids.max() if len(instance_ids) else 0) + 1
@@ -477,8 +528,9 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         # instance_text_labels is a list of text
         data_dict.update(instance_info)
         
-        if 'image_segment_feat' in self.scan_data[scan_id]['sub_frames'][sub_frame_id].keys():
-            cur_segment_image = torch.from_numpy(deepcopy(self.scan_data[scan_id]['sub_frames'][sub_frame_id]['image_segment_feat']))
+        if 'image_segment_feat' in scan_data['sub_frames'][sub_frame_id].keys():
+            cur_segment_image = torch.from_numpy(deepcopy(scan_data['sub_frames'][sub_frame_id]['image_segment_feat']))
+      
             data_dict['mv_seg_fts'] = cur_segment_image
             data_dict['mv_seg_pad_masks'] = torch.ones(cur_segment_image.shape[0], dtype=torch.bool)
         

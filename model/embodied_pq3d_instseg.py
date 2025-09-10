@@ -93,6 +93,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
         for input in self.inputs:
             feat, mask, pos = None, None, None
             if input == 'mv':
+                # import pdb; pdb.set_trace()
                 feat = self.mv_encoder(obj_feats = data_dict['mv_seg_fts'])
                 mask = data_dict['mv_seg_pad_masks'].logical_not()
                 pos = fts_pos
@@ -129,6 +130,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
                     assert input == 'voxel'
                     feats[0] = feats[0][-1] # use the last scale of voxel features for segment matching
                 seg_fts_for_match.append(feats)                 
+        # import pdb; pdb.set_trace()
         # build mask head
         if hasattr(self, 'mask_head'):
             mask_head_partial = partial(self.mask_head, query_locs=query_locs, seg_fts_for_match=seg_fts_for_match, seg_masks=data_dict['seg_pad_masks'].logical_not(),

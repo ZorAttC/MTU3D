@@ -1,0 +1,38 @@
+mode: 'train'
+data_root: '/hdd/caoyuhao/3D_data/original_scannetv2'
+use_accelerator: true
+
+# 训练配置
+epochs: 50
+batch_size: 32
+learning_rate: 3e-4
+weight_decay: 1e-4
+min_lr: 1e-6
+num_workers: 4
+save_freq: 10
+max_eval_batches: 10  # 限制验证时的最大批次数量，提高验证效率
+
+
+# 模型配置
+input_dim: 1280  # RADIO特征维度
+output_dim: 320  # TinyViT特征维度
+adapter_layer_num: 3  # 维度适配器层数
+sam_checkpoint: "/hdd/caoyuhao/VLN_ws/MobileSAM/weights/mobile_sam.pt"  # SAM模型检查点路径
+radio_model_version: "c-radio_v3-h"     # RADIO模型版本
+
+# 损失函数配置
+mse_weight: 1.0      # MSE损失权重
+cosine_weight: 0.5   # 余弦相似度损失权重
+
+# 保存配置
+save_dir: "./checkpoints"
+
+# Wandb配置
+use_wandb: true
+wandb_project: "sam-dim-adapter"
+wandb_run_name: null  # 如果为null，wandb会自动生成名称
+wandb_tags: ["dim_adapter", "sam", "radio", "tinyvit"]
+
+# Wandb实验配置
+wandb_notes: "Training dimension adapter to map RADIO 1280-dim features to TinyViT 320-dim features"
+wandb_group: null  # 可以用来组织相关的实验运行

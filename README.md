@@ -133,10 +133,10 @@ python3 ... debug.flag=True debug.debug_size=10
 
 To train, use
 ```
-CUDA_VISIBLE_DEVICES=0,1 python launch.py --mode accelerate \
-    --gpu_per_node=2 \
+CUDA_VISIBLE_DEVICES=0,1,2,3 python launch.py --mode accelerate \
+    --gpu_per_node=4 \
     --mem_per_gpu=40 \
-    --config configs/embodied-pq3d-final/embodied_scan_instseg.yaml
+    --config configs/embodied-pq3d-final/embodied_scan_instseg_cyh.yaml
 ```
 ### Run MTU3D for evaluation
 ```

@@ -84,10 +84,22 @@ class EmbodiedScanBase(Dataset, ABC):
             if split == 'train':
                 split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + "_sort.json")
                 with open(split_file, 'r') as f:
-                    scan_ids = json.load(f)
+                    scan_ids_all = json.load(f)
+                # Filter scan_ids that actually exist in the embodied_base_dir
+                scan_ids = []
+                for scan_id in scan_ids_all:
+                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
+                    if os.path.exists(scan_path):
+                        scan_ids.append(scan_id)
             else:
                 split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + ".txt")
-                scan_ids = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
+                scan_ids_all = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
+                # Filter scan_ids that actually exist in the embodied_base_dir
+                scan_ids = []
+                for scan_id in scan_ids_all:
+                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
+                    if os.path.exists(scan_path):
+                        scan_ids.append(scan_id)
                 scan_ids = sorted(scan_ids)
         elif self.dataset_name == 'HM3D':
             # hm3d scan ids 000853-XUdsaknjsa,..., 

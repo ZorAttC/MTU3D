@@ -25,7 +25,7 @@ embodied_scan_dir = "/hdd/public_datasets/embodied_scan/"
 pq3d_stage1_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all"
 pq3d_stage2_path = "/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage2-fine-tune-ovon"
 output_path = "./output_dirs/ovon-full-finetune-num-1.json"
-enable_visualization = False
+enable_visualization = True
 decision_num_min = 3
 visible_radius = 3
 
@@ -214,6 +214,7 @@ for split in split_list:
                 video.write(color_frame)
             video.release()
             pq3d_model.representation_manager.save_colored_point_cloud()
+            pq3d_model.representation_manager.save_colored_point_cloud_ply()
         # compute metric
         agent_state = agent.get_state()
         view_points = [

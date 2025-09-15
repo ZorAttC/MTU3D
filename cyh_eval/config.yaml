@@ -18,7 +18,7 @@ logger:
   name: wandb
   entity: cyh200206
   autoname: true
-  run_id: lgbggk5u
+  run_id: arjy7wor
 data:
   train:
   - EmbodiedScanInstSegScanNet
@@ -53,7 +53,7 @@ data:
     load_frame_interval: 1
     val_load_scan_max_num: 10
   scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
-  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan
+  embodied_base: /hdd/public_datasets/embodied_scan
 dataloader:
   batchsize: 16
   batchsize_eval: 1

@@ -85,10 +85,22 @@ class EmbodiedScanBase(Dataset, ABC):
             if split == 'train':
                 split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + "_sort.json")
                 with open(split_file, 'r') as f:
-                    scan_ids = json.load(f)
+                    scan_ids_all = json.load(f)
+                # Filter scan_ids that actually exist in the embodied_base_dir
+                scan_ids = []
+                for scan_id in scan_ids_all:#跳过数据缺失的scan（暂时没下载完）
+                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
+                    if os.path.exists(scan_path):
+                        scan_ids.append(scan_id)
             else:
                 split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + ".txt")
-                scan_ids = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
+                scan_ids_all = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
+                # Filter scan_ids that actually exist in the embodied_base_dir
+                scan_ids = []
+                for scan_id in scan_ids_all:#跳过数据缺失的scan
+                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
+                    if os.path.exists(scan_path):
+                        scan_ids.append(scan_id)
                 scan_ids = sorted(scan_ids)
         elif self.dataset_name == 'HM3D':
             # hm3d scan ids 000853-XUdsaknjsa,..., 
@@ -197,9 +209,13 @@ class EmbodiedScanBase(Dataset, ABC):
                 one_scan['sub_frames'][sub_frame_id]["segment_id"] = segment_id
             
             if options.get('load_image_segment_feat', False):
-                img_feat = np.load(os.path.join(self.embodied_base_dir, self.dataset_name, 'img_feat', scan_id, f'{sub_frame_id}.npy'))
-                img_feat = img_feat[unique_ids]
-                one_scan['sub_frames'][sub_frame_id]['image_segment_feat'] = img_feat
+                img_feat_path = os.path.join(self.embodied_base_dir, self.dataset_name, 'img_feat', scan_id, f'{sub_frame_id}.bin')
+                if os.path.exists(img_feat_path):
+                    img_feat = np.fromfile(img_feat_path, dtype=np.float32).reshape(-1, self.cfg.model.mv_encoder.args.input_feat_size)
+                    # print("shape of img_feat", img_feat.shape)
+                    # Reshape if needed based on your feature dimensions
+                    # img_feat = img_feat.reshape(-1, feature_dim)  # uncomment and set feature_dim if needed
+                    one_scan['sub_frames'][sub_frame_id]['image_segment_feat'] = img_feat
             
         if options.get('load_global_pc', False):
             # load global pcd
@@ -522,6 +538,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
             'query_pad_masks': query_pad_masks,
             'query_selection_ids': query_selection_ids
         }
+        
         # instance_info includes instance_ids_ori', 'instance_ids', 'instance_labels', 'full_masks', 'segment_masks', 'segment_labels', 'instance_text_labels' 
         # instance_text_embeds and instance_boxes are optional, torch tensor, list collate
         #  all instance info is list collate

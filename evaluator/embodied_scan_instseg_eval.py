@@ -289,6 +289,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         if self.cur_scan_id is None:
             self.cur_scan_id = scan_id
         elif self.cur_scan_id != scan_id:
+            self.representation_manger.save_colored_point_cloud_ply(f"debug_{self.cur_scan_id}_{sub_frame_id}.ply")
             self.flush_representation_manager()
             self.cur_scan_id = scan_id
         # merge
@@ -303,6 +304,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         voxel2segment = data_dict['voxel2segment']
         segment_to_full_maps = data_dict['segment_to_full_maps']
         raw_coordinates = data_dict['raw_coordinates']
+        print("scan_id:", scan_id, "sub_frame_id:", sub_frame_id)
         print("pred_masks shape:", [x.shape for x in pred_masks])
         print("pred_logits shape:", [x.shape for x in pred_logits])
         print("pred_boxes shape:", [x.shape for x in pred_boxes])
@@ -370,6 +372,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
                 'open_vocab_feats': embeds,
             }]
             self.representation_manger.merge(predict_dict_list)
+        
             
         # update representation
         self.total_count += metrics["total_count"]
@@ -410,7 +413,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         # save results
         if self.save:
             eval_results['scan_id'] = list(self.preds.keys())
-            eval_results['preds'] = self.preds
+            # eval_results['preds'] = self.preds
             save_path = self.save_dir / f"{self.dataset_name}_eval_results.json"
             with open(save_path, 'w') as f:
                 json.dump(eval_results, f, indent=4)
@@ -549,6 +552,7 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
                 'open_vocab_feats': embeds,
             }]
             self.representation_manger.merge(predict_dict_list)
+            self.representation_manger.save_colored_point_cloud_ply(f"./outputs/debug_{self.cur_scan_id}_{sub_frame_id}.ply")
             
         # update representation
         self.total_count += metrics["total_count"]

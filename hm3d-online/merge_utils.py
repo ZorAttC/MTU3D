@@ -335,6 +335,27 @@ class RepresentationManager:
 
         # Save the colored point cloud to a .npy file
         np.save('colored_point_cloud.npy', colored_point_cloud)
+    
+    def save_colored_point_cloud_ply(self, filename='colored_point_cloud.ply'):
+        # Create a color map for the object masks
+        num_objects = self.object_mask.shape[1]
+        colors = np.random.rand(num_objects, 3) * 255  # Random colors for each object (0-255)
+
+        # Initialize the colored point cloud
+        colored_point_cloud = self.point_cloud.copy()
+        
+        # Apply colors to the point cloud based on the object mask
+        for i in range(num_objects):
+            mask = self.object_mask[:, i].astype(bool)
+            colored_point_cloud[mask, 3:6] = colors[i]  # Assign color to the points
+
+        # Create Open3D point cloud
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(colored_point_cloud[:, :3])
+        pcd.colors = o3d.utility.Vector3dVector(colored_point_cloud[:, 3:6] / 255.0)
+        
+        # Save the colored point cloud to a PLY file
+        o3d.io.write_point_cloud(filename, pcd)
         
     def merge(self, pred_dict_list):
         for idx in range(len(pred_dict_list)):

@@ -1,20 +1,20 @@
 ## Move to Understand a 3D Scene: Bridging Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation
 
 <p align="left">
-    <a href='https://arxiv.org/abs/2405.11442'>
+    <a href='https://www.arxiv.org/abs/2507.04047'>
       <img src='https://img.shields.io/badge/Paper-PDF-red?style=plastic&logo=adobeacrobatreader&logoColor=red' alt='Paper PDF'>
     </a>
-    <a href='https://arxiv.org/abs/2405.11442'>
+    <a href='https://www.arxiv.org/abs/2507.04047'>
       <img src='https://img.shields.io/badge/Paper-arXiv-green?style=plastic&logo=arXiv&logoColor=green' alt='Paper arXiv'>
     </a>
-    <a href='https://pq3d.github.io'>
+    <a href='https://mtu3d.github.io/'>
       <img src='https://img.shields.io/badge/Project-Page-blue?style=plastic&logo=Google%20chrome&logoColor=blue' alt='Project Page'>
     </a>
     <!-- <a href='https://huggingface.co/spaces/li-qing/PQ3D-Demo'> -->
       <!-- <img src='https://img.shields.io/badge/Demo-HuggingFace-yellow?style=plastic&logo=AirPlay%20Video&logoColor=yellow' alt='HuggigFace'> -->
     <!-- </a> -->
-    <a href='https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link'>
-      <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints(TODO)'>
+    <a href='https://huggingface.co/bigai/MTU3D'>
+      <img src='https://img.shields.io/badge/Model-Checkpoints-orange?style=plastic&logo=Google%20Drive&logoColor=orange' alt='Checkpoints'>
     </a>
 </p>
 
@@ -33,18 +33,19 @@
 
 This repository is the official implementation of the Arxiv paper "Move to Understand a 3D Scene: Briding Visual Grounding and Exploration for Efficient and Versatile Embodied Navigation".
 
-[Paper](https://arxiv.org/abs/2405.11442) |
-[arXiv](https://arxiv.org/abs/2405.11442) |
-[Project](https://pq3d.github.io) |
-[Checkpoints](https://drive.google.com/drive/folders/1MDt9yaco_TllGfqqt76UOxMV1JMMVsji?usp=share_link)
+[Paper](https://www.arxiv.org/abs/2507.04047) |
+[arXiv](https://www.arxiv.org/abs/2507.04047) |
+[Project](https://mtu3d.github.io) |
+[Checkpoints](https://huggingface.co/bigai/MTU3D)
 
 <div align=center>
 <img src='https://mtu3d.github.io/mtu3d-teaser.png' width=100%>
 </div>
 
 ### News
-- [ 2025.08 ] Release training and evaluation.
-- [ 2025.08 ] Release data and checkpoints.
+- [ 2025.07 ] Release training and evaluation.
+- [ 2025.07 ] Release data and checkpoints.
+- [ 2025.08 ] Release data collection scripts.
 <!-- - [ 2024.07 ] Our huggingface DEMO is here [DEMO](https://huggingface.co/spaces/li-qing/PQ3D-Demo), welcome to try our model!
 - [ 2024.07 ] Release codes of model! TODO: Clean up training and evaluation -->
 
@@ -56,7 +57,8 @@ This repository is the official implementation of the Arxiv paper "Move to Under
 ### Install
 1. Install conda package
 ```
-conda env create -n envname python=3.8
+conda create -n envname python=3.8
+conda activate envname
 pip3 install torch==2.0.0
 pip3 install torchvision==0.15.1
 python3 -m pip install nvidia-cudnn-cu11==8.7.0.84
@@ -165,6 +167,9 @@ Edit run_nav.sh.
 ```
 bash run_nav.sh
 ```
+
+### Data Collection
+We provide data collection scripts in **vle_collection** folder.
 
 ### Acknowledgement
 We would like to thank the authors of [Vil3dref](https://github.com/cshizhe/vil3dref), [Mask3d](https://github.com/JonasSchult/Mask3D), [Openscene](https://github.com/pengsongyou/openscene), [Xdecoder](https://github.com/microsoft/X-Decoder), and [3D-VisTA](https://github.com/3d-vista/3D-VisTA) for their open-source release.

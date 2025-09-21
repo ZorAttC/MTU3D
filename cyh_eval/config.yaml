@@ -18,7 +18,7 @@ logger:
   name: wandb
   entity: cyh200206
   autoname: true
-  run_id: arjy7wor
+  run_id: rxas2g5f
 data:
   train:
   - EmbodiedScanInstSegScanNet
@@ -28,6 +28,7 @@ data:
   - EmbodiedScanInstSegScanNet
   load_all_dataset_once: false
   load_scan_options:
+    cache_size: 750
     load_pc_info: true
     load_segment_info: true
     load_image_segment_feat: true

@@ -7,6 +7,7 @@ import collections
 from copy import deepcopy
 from pathlib import Path
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import numpy as np
 import torch
@@ -50,6 +51,8 @@ class EmbodiedScanBase(Dataset, ABC):
         self.embodied_base_dir = cfg.data.embodied_base
         self.load_scan_options = cfg.data.get('load_scan_options', {})
         self.load_all_dataset_once = cfg.data.get('load_all_dataset_once', True)
+        if not self.load_all_dataset_once:
+            self.cache_size = self.load_scan_options.get('cache_size', 100)
         # label converter for scannet
         self.int2cat = json.load(open(os.path.join(self.base_dir,
                                             "ScanNet/annotations/meta_data/scannetv2_raw_categories.json"),
@@ -92,6 +95,7 @@ class EmbodiedScanBase(Dataset, ABC):
                     scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
                     if os.path.exists(scan_path):
                         scan_ids.append(scan_id)
+                
             else:
                 split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + ".txt")
                 scan_ids_all = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
@@ -130,8 +134,8 @@ class EmbodiedScanBase(Dataset, ABC):
         if self.load_all_dataset_once:
             self.scan_data = self._load_scans(self.scan_ids)
         else:
-            # Initialize empty scan_data dict for lazy loading
-            self.scan_data = {}
+            # Initialize empty scan_data dict for lazy loading with LRU cache
+            self.scan_data = OrderedDict()
         
     def _load_scans(self, scan_ids):
         process_num = self.load_scan_options.get('process_num', 0)
@@ -209,12 +213,14 @@ class EmbodiedScanBase(Dataset, ABC):
                 one_scan['sub_frames'][sub_frame_id]["segment_id"] = segment_id
             
             if options.get('load_image_segment_feat', False):
-                img_feat_path = os.path.join(self.embodied_base_dir, self.dataset_name, 'img_feat', scan_id, f'{sub_frame_id}.bin')
-                if os.path.exists(img_feat_path):
-                    img_feat = np.fromfile(img_feat_path, dtype=np.float32).reshape(-1, self.cfg.model.mv_encoder.args.input_feat_size)
-                    # print("shape of img_feat", img_feat.shape)
-                    # Reshape if needed based on your feature dimensions
-                    # img_feat = img_feat.reshape(-1, feature_dim)  # uncomment and set feature_dim if needed
+                img_feat_path_bin = os.path.join(self.embodied_base_dir, self.dataset_name, 'img_feat', scan_id, f'{sub_frame_id}.bin')
+                img_feat_path_npy = os.path.join(self.embodied_base_dir, self.dataset_name, 'img_feat', scan_id, f'{sub_frame_id}.npy')
+                
+                if os.path.exists(img_feat_path_bin):
+                    img_feat = np.fromfile(img_feat_path_bin, dtype=np.float32).reshape(-1, self.cfg.model.mv_encoder.args.input_feat_size)
+                    one_scan['sub_frames'][sub_frame_id]['image_segment_feat'] = img_feat
+                elif os.path.exists(img_feat_path_npy):
+                    img_feat = np.load(img_feat_path_npy)
                     one_scan['sub_frames'][sub_frame_id]['image_segment_feat'] = img_feat
             
         if options.get('load_global_pc', False):
@@ -241,11 +247,21 @@ class EmbodiedScanBase(Dataset, ABC):
             return self.scan_data[scan_id]
         else:
             # Check if already loaded
-            if scan_id not in self.scan_data:
+            if scan_id in self.scan_data:
+                # Move to end to mark as recently used
+                self.scan_data.move_to_end(scan_id)
+                return self.scan_data[scan_id]
+            else:
                 # Load single scan on demand
                 _, one_scan = self._load_one_scan(scan_id)
+                
+                # If cache is full, remove the least recently used item
+                if len(self.scan_data) >= self.cache_size:
+                    oldest_scan_id, oldest_scan_data = self.scan_data.popitem(last=False)
+                    del oldest_scan_data # Ensure memory is released
+                    
                 self.scan_data[scan_id] = one_scan
-            return self.scan_data[scan_id]
+                return self.scan_data[scan_id]
 
 @DATASET_REGISTRY.register()
 class EmbodiedScanInstseg(EmbodiedScanBase):
@@ -329,7 +345,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
             scan_ids = self.scan_ids
         elif isinstance(scan_ids, str):
             scan_ids = [scan_ids]
-            
+        # print(f"Extracting instance information for {len(scan_ids)} scans...")
         for scan_id in scan_ids:
             scan_data = self._get_scan_data(scan_id)
             if scan_data.get("extract_inst_info", False):
@@ -428,7 +444,6 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         scan_data = self._get_scan_data(scan_id)
         if not scan_data.get("extract_inst_info", False):
             self.extract_inst_info([scan_id])
-            scan_data = self._get_scan_data(scan_id)  # Get updated data
         
         # load local information
         pcds = deepcopy(scan_data['sub_frames'][sub_frame_id]['pcds'])
@@ -604,6 +619,5 @@ class EmbodiedScanInstSegHM3D(EmbodiedScanInstseg):
 
 
 
-   
-    
-    
+
+

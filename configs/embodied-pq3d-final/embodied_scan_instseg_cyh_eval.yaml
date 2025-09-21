@@ -1,7 +1,7 @@
 # Experiment general info
 name: "Embodied-PQ3D"
 base_dir: "outputs"
-exp_dir: "cyh_eval"
+exp_dir: ""
 note: ""
 naming_keywords: ["note", "time"]
 
@@ -10,7 +10,7 @@ num_gpu: 1
 mode: "test"
 
 resume: False
-pretrain_ckpt_path: '/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all'
+pretrain_ckpt_path: '/hdd/caoyuhao/VLN_ws/MTU3D/outputs/Embodied-PQ3D/2025-09-16-21:09:35.254581/ckpt/latest.pth'
 
 debug:
   flag: False
@@ -60,14 +60,15 @@ data:
     val_load_scan_max_num: 10
 
   scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
-  embodied_base: /hdd/public_datasets/embodied_scan
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_ERADIO
 
 # dataloader details
 dataloader:
   # This is a per-gpu batchsize
   batchsize: 16
   batchsize_eval: 1
-  num_workers: 4
+  num_workers: 1
+  prefetch_factor: 2
   
 task: InstSeg
 data_wrapper: EmbodiedScanInstSegDatasetWrapper
@@ -91,9 +92,6 @@ solver:
       warmup_steps: 100
 
 eval:
-#EmbodiedScanInstSegEvalGTMerge
-#EmbodiedScanInstSegEvalBoxMergeOpenVocab
-
   name: EmbodiedScanInstSegEvalBoxMerge
   dataset_name: ScanNet
   pass_kwargs: True
@@ -132,7 +130,7 @@ model:
   mv_encoder:
     name: ObjectEncoder
     args:
-      input_feat_size : 1024
+      input_feat_size : 1536 #CLIP:1024 RADIO:1536
       hidden_size: ${model.hidden_size}
       use_projection: True
       use_cls_head: False

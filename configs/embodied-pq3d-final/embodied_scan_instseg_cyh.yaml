@@ -32,6 +32,7 @@ data:
   load_all_dataset_once: False
 
   load_scan_options:
+    cache_size: 750
     load_pc_info: True
     load_segment_info: True
     load_image_segment_feat: True
@@ -66,7 +67,8 @@ dataloader:
   # This is a per-gpu batchsize
   batchsize: 16
   batchsize_eval: 1
-  num_workers: 4
+  num_workers: 1
+  prefetch_factor: 2
   
 task: InstSeg
 data_wrapper: EmbodiedScanInstSegDatasetWrapper

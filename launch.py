@@ -42,7 +42,7 @@ def parse_args():
                         help="Memory allocated for each gpu in GB")
     parser.add_argument("--time", default=24, type=int,
                         help="Time allocated for the job in hours")
-    parser.add_argument("--port", default=1234, type=int,
+    parser.add_argument("--port", default=1233, type=int,
                         help="Default port for distributed training")
     parser.add_argument("--nodelist", default="", type=str,
                         help="Default node id for distributed training")

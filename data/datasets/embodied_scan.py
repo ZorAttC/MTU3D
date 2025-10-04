@@ -51,6 +51,8 @@ class EmbodiedScanBase(Dataset, ABC):
         self.embodied_base_dir = cfg.data.embodied_base
         self.load_scan_options = cfg.data.get('load_scan_options', {})
         self.load_all_dataset_once = cfg.data.get('load_all_dataset_once', True)
+        self.train_split=cfg.data.get('train_split', None)
+        self.val_split=cfg.data.get('val_split', None)
         if not self.load_all_dataset_once:
             self.cache_size = self.load_scan_options.get('cache_size', 100)
         # label converter for scannet
@@ -84,27 +86,38 @@ class EmbodiedScanBase(Dataset, ABC):
 
     def _load_split(self, cfg, split):
         if self.dataset_name == 'ScanNet':
-            # scannet scan ids, scene0000_00,..
+            # scannet scan ids, e.g., scene0000_00
+            need_sort = False
             if split == 'train':
-                split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + "_sort.json")
-                with open(split_file, 'r') as f:
-                    scan_ids_all = json.load(f)
-                # Filter scan_ids that actually exist in the embodied_base_dir
-                scan_ids = []
-                for scan_id in scan_ids_all:#跳过数据缺失的scan（暂时没下载完）
-                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
-                    if os.path.exists(scan_path):
-                        scan_ids.append(scan_id)
-                
+                # Prefer scans from self.train_split (txt) if provided
+                if self.train_split is not None and os.path.exists(self.train_split):
+                    with open(self.train_split, 'r', encoding='utf-8') as f:
+                        scan_ids_all = [x.strip() for x in f if x.strip()]
+                else:
+                    split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + "_sort.json")
+                    with open(split_file, 'r', encoding='utf-8') as f:
+                        scan_ids_all = json.load(f)
             else:
-                split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + ".txt")
-                scan_ids_all = {x.strip() for x in open(split_file, 'r', encoding="utf-8")}
-                # Filter scan_ids that actually exist in the embodied_base_dir
-                scan_ids = []
-                for scan_id in scan_ids_all:#跳过数据缺失的scan
-                    scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
-                    if os.path.exists(scan_path):
-                        scan_ids.append(scan_id)
+                # Prefer scans from self.val_split (txt) if provided
+                if self.val_split is not None and os.path.exists(self.val_split):
+                    with open(self.val_split, 'r', encoding='utf-8') as f:
+                        scan_ids_all = [x.strip() for x in f if x.strip()]
+                    need_sort = False
+                    
+                else:
+                    split_file = os.path.join(self.base_dir, 'ScanNet/annotations/splits/scannetv2_' + split + ".txt")
+                    with open(split_file, 'r', encoding="utf-8") as f:
+                        scan_ids_all = [x.strip() for x in f if x.strip()]
+                    need_sort = True
+
+            # Filter scan_ids that actually exist in the embodied_base_dir
+            scan_ids = []
+            for scan_id in scan_ids_all:  # skip missing scans
+                scan_path = os.path.join(self.embodied_base_dir, 'ScanNet', 'points', scan_id)
+                if os.path.exists(scan_path):
+                    scan_ids.append(scan_id)
+       
+            if need_sort:
                 scan_ids = sorted(scan_ids)
         elif self.dataset_name == 'HM3D':
             # hm3d scan ids 000853-XUdsaknjsa,..., 
@@ -559,7 +572,6 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         #  all instance info is list collate
         # instance_text_labels is a list of text
         data_dict.update(instance_info)
-        
         if 'image_segment_feat' in scan_data['sub_frames'][sub_frame_id].keys():
             cur_segment_image = torch.from_numpy(deepcopy(scan_data['sub_frames'][sub_frame_id]['image_segment_feat']))
       

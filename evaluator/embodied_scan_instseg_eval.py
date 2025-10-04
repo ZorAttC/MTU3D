@@ -256,6 +256,14 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         pred_masks = self.representation_manger.object_mask # NxM
         pred_scores = self.representation_manger.object_score # N
         pred_classes = np.argmax(self.representation_manger.object_class, axis=1) # N
+
+        # 检查数据是否为空
+        if pred_point_cloud.shape[0] == 0 or pred_masks.shape[0] == 0 or pred_masks.shape[1] == 0:
+            # 空数据情况下的处理
+            self.preds[scan_id] = {'pred_scores': np.array([]), 'pred_masks': np.array([]), 'pred_classes': np.array([])}
+            self.representation_manger.reset()
+            return
+
         if self.dataset_name == 'HM3D':
             gt_pcd_data = np.fromfile(os.path.join(self.config.data.embodied_base, 'HM3D', 'points_global', scan_id + '.bin'), dtype=np.float32).reshape(-1, 6)
             points, colors = gt_pcd_data[:, :3], gt_pcd_data[:, 3:]
@@ -263,16 +271,38 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         elif self.dataset_name == 'ScanNet':
             gt_pcd_data = np.fromfile(os.path.join(self.config.data.embodied_base, 'ScanNet', 'points_global', scan_id + '.bin'), dtype=np.float32).reshape(-1, 6)
             points, colors = gt_pcd_data[:, :3], gt_pcd_data[:, 3:]
+
+        # 检查points是否为空
+        if points.shape[0] == 0:
+            self.preds[scan_id] = {'pred_scores': pred_scores, 'pred_masks': pred_masks, 'pred_classes': pred_classes}
+            self.representation_manger.reset()
+            return
+
         kdtree = scipy.spatial.cKDTree(pred_point_cloud[:, :3])
         distance, indices = kdtree.query(points[:, :3], k=1)
         pred_masks = pred_masks[indices]
         # polish mask by segment from reconstructed point cloud like ESAM
         if self.dataset_name == 'ScanNet':
-            segment_id_path = os.path.join(self.config.data.embodied_base, 'ScanNet', 'segment_id_global', scan_id + '.npy') 
+            segment_id_path = os.path.join(self.config.data.embodied_base, 'ScanNet', 'segment_id_global', scan_id + '.npy')
             pred_masks = torch.from_numpy(pred_masks).float().T # (M, N)
             segment_id = np.load(segment_id_path)
+
+            # 检查segment_id的有效性
+            if segment_id.size == 0 or pred_masks.size == 0:
+                self.preds[scan_id] = {'pred_scores': pred_scores, 'pred_masks': pred_masks.numpy() if hasattr(pred_masks, 'numpy') else pred_masks, 'pred_classes': pred_classes}
+                self.representation_manger.reset()
+                return
+
             assert segment_id.max() == (np.unique(segment_id).shape[0] - 1)
             segment_id = torch.from_numpy(segment_id).long() # (N)
+
+            # 检查维度匹配
+            if pred_masks.shape[1] != segment_id.shape[0]:
+                print(f"Warning: Dimension mismatch in scan {scan_id}, pred_masks shape: {pred_masks.shape}, segment_id shape: {segment_id.shape}")
+                self.preds[scan_id] = {'pred_scores': pred_scores, 'pred_masks': pred_masks.numpy(), 'pred_classes': pred_classes}
+                self.representation_manger.reset()
+                return
+
             pred_masks = scatter_mean(pred_masks, segment_id, dim=1) # (M, S)
             pred_masks = (pred_masks > 0.5)[:, segment_id] # (M, N)
             pred_masks = pred_masks.T.numpy()            

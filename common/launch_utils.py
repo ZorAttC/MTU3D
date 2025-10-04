@@ -91,6 +91,7 @@ def accelerate_launch(args):
         --mixed_precision {args.mixed_precision} \
         --num_processes {args.gpu_per_node * args.num_nodes} \
         --num_cpu_threads_per_process {args.cpu_per_task} \
+        --main_process_port {args.port} \
         --dynamo_backend no \
         {args.run_file} \
         --config-path {cfg_path} \

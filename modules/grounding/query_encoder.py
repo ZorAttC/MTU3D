@@ -237,6 +237,7 @@ class Mask3DSegLevelQueryEncoder(nn.Module):
         return query, predictions_class, predictions_mask
 
 class QueryEncoderLayer(nn.Module):
+    # memories: list of str, e.g. ['multi_view', 'point_cloud', 'voxel', 'prompt']
     def __init__(self, d_model, nhead, memories, dim_feedforward=2048, dropout=0.1, activation="relu", prenorm=False, spatial_selfattn=False, structure='mixed', memory_dropout=0, drop_memories_test=[]):
         super().__init__()
         if spatial_selfattn:

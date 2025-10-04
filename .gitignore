@@ -144,3 +144,4 @@ tmp
 *.avi
 *.npy
 outputs_dirs/*
+*.ply

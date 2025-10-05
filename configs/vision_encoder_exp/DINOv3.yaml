@@ -62,7 +62,7 @@ data:
     val_load_scan_max_num: 10
 
   scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
-  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv3_ViTB
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv3_ViTL
 
 # dataloader details
 dataloader:
@@ -132,7 +132,7 @@ model:
   mv_encoder:
     name: ObjectEncoder
     args:
-      input_feat_size : 768 #CLIP:1024 RADIO:1536 DINOv3:1024
+      input_feat_size : 1024 #CLIP:1024 RADIO:1536 DINOv3:1024
       hidden_size: ${model.hidden_size}
       use_projection: True
       use_cls_head: False

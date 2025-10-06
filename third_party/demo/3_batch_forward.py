@@ -18,7 +18,7 @@ import copy
 import open3d as o3d
 import sonata
 import torch
-
+import numpy as np
 try:
     import flash_attn
     print(f"Flash attention version: {flash_attn.__version__}")
@@ -61,9 +61,15 @@ if __name__ == "__main__":
     point1.pop("segment200")
     segment = point1.pop("segment20")
     point1["segment"] = segment  # two kinds of segment exist in ScanNet, only use one
+    print("shape of point1 segment:", point1["segment"].shape)
+    print("shape of point1 coord:", point1["coord"].shape)
     original_coord = point1["coord"].copy()
 
+    # import pdb; pdb.set_trace()
+
     point2 = copy.deepcopy(point1)
+    # point2['color'] = np.zeros_like(point2['color'])
+    
 
     point1 = transform(point1)
     point2 = transform(point2)
@@ -79,6 +85,7 @@ if __name__ == "__main__":
         # Point is a structure contains all the information during forward
         print(point.keys())
         print(f"sparse_shape: {point.get('sparse_shape', 'Not found')}")
+        
         # for _ in range(2):
         #     assert "pooling_parent" in point.keys()
         #     assert "pooling_inverse" in point.keys()
@@ -93,7 +100,7 @@ if __name__ == "__main__":
             parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
             point = parent
             print(f"After upsample: {point['coord'].shape[0]} points, {point.feat.shape[-1]} channels")
-
+            # import pdb;pdb.set_trace()
         # PCA
         pca_color = get_pca_color(point.feat, brightness=1.2, center=True)
         batched_coord = point.coord.clone()

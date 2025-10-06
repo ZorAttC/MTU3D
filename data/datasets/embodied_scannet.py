@@ -16,8 +16,11 @@ from tqdm import tqdm
 from scipy import sparse
 import volumentations as V
 import albumentations as A
-import MinkowskiEngine as ME
+import spconv.pytorch as spconv
+from modules.third_party.sonata.structure import Point
+import modules.third_party.sonata as sonata
 from transformers import AutoTokenizer
+import MinkowskiEngine as ME
 
 from common.misc import rgetattr
 from ..data_utils import (
@@ -427,7 +430,6 @@ class EmbodiedScanNetInstSeg(EmbodiedScanNet):
             labels[labels == k] = label_info[k]
         return labels
 
-
 @DATASET_REGISTRY.register()
 class EmbodiedRecurrentScanNetInstSeg(EmbodiedScanNet):
     def __init__(self, cfg, split):
@@ -654,7 +656,9 @@ class EmbodiedRecurrentScanNetInstSeg(EmbodiedScanNet):
             seg_point_count = scatter_add(torch.ones_like(point2seg_id), point2seg_id, dim=0)
 
             # voxelize coorinates, features and labels
+           
             voxel_coordinates = np.floor(coordinates / self.voxel_size)
+ 
             _, unique_map, inverse_map = ME.utils.sparse_quantize(coordinates=voxel_coordinates, return_index=True, return_inverse=True)
             voxel_coordinates = voxel_coordinates[unique_map]
             voxel_features = features[unique_map]
@@ -666,6 +670,7 @@ class EmbodiedRecurrentScanNetInstSeg(EmbodiedScanNet):
             # fill data dict
             data_dict = {
                 # input data
+             
                 "voxel_coordinates": voxel_coordinates,
                 "voxel_features": voxel_features,
                 "voxel2segment": voxel2seg_id,

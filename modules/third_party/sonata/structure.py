@@ -147,6 +147,7 @@ class Point(Dict):
             sparse_shape = torch.add(
                 torch.max(self.grid_coord, dim=0).values, pad
             ).tolist()
+      
         sparse_conv_feat = spconv.SparseConvTensor(
             features=self.feat,
             indices=torch.cat(

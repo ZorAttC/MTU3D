@@ -136,7 +136,7 @@ class PCDMask3DSegLevelEncoder(nn.Module):
         return feat
             
     def forward(self, x, point2segment, max_seg):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         with self.context():
             # minkowski backbone
             pcds_features, aux = self.backbone(x)

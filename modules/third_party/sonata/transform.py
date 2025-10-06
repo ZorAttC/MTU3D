@@ -876,6 +876,7 @@ class GridSample(object):
                     )
                 data_dict["displacement"] = displacement[idx_unique]
                 data_dict["index_valid_keys"].append("displacement")
+            data_dict["unique_map"] = idx_unique
             return data_dict
 
         elif self.mode == "test":  # test mode
@@ -1218,6 +1219,26 @@ def default():
         dict(
             type="Collect",
             keys=("coord", "grid_coord", "color", "inverse"),
+            feat_keys=("coord", "color", "normal"),
+        ),
+    ]
+    return Compose(config)
+
+def my_pipeline():
+    config = [
+        dict(type="CenterShift", apply_z=True),
+        dict(
+            type="GridSample",
+            grid_size=0.02,
+            hash_type="fnv",
+            mode="train",
+            return_grid_coord=True,
+            return_inverse=True,
+        ),
+        dict(type="ToTensor"),
+        dict(
+            type="Collect",
+            keys=("coord", "grid_coord", "color", "inverse", "unique_map"),
             feat_keys=("coord", "color", "normal"),
         ),
     ]

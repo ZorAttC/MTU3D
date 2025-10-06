@@ -215,7 +215,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
 import spconv.pytorch as spconv
 
 @MODEL_REGISTRY.register()
-class EmbodiedPQ3DInstSegModel_Sonata(BaseModel):
+class EmbodiedPQ3DInstSegModelSPconv(BaseModel):
     def __init__(self, cfg):
         super().__init__(cfg)
         # record parameters
@@ -288,18 +288,10 @@ class EmbodiedPQ3DInstSegModel_Sonata(BaseModel):
                 pos = fts_pos
             elif input == 'voxel':
                 voxel_features = data_dict['voxel_features']
-                voxel_coordinates = data_dict['voxel_coordinates']
-                spatial_shape = data_dict['spatial_shape']
-                batch_size = data_dict['query_locs'].shape[0]
-                x = spconv.SparseConvTensor(
-                    features=voxel_features[:, :-3],
-                    indices=voxel_coordinates,
-                    spatial_shape=spatial_shape,
-                    batch_size=batch_size
-                )
-                
+                voxel_coordinates = data_dict['voxel_coordinates']                
                 voxel2segment = data_dict['voxel2segment']
-                feat = self.voxel_encoder(x, voxel2segment, max_seg=fts_locs.shape[1])
+                sonata_pts=data_dict['sonata_pts']
+                feat = self.voxel_encoder(sonata_pts, voxel2segment, max_seg=fts_locs.shape[1])
                 if self.add_geometry_to_segment:
                     for bid in range(len(voxel2segment)):
                         sp_idx = voxel2segment[bid]
@@ -327,7 +319,7 @@ class EmbodiedPQ3DInstSegModel_Sonata(BaseModel):
                     assert input == 'voxel'
                     feats[0] = feats[0][-1] # use the last scale of voxel features for segment matching
                 seg_fts_for_match.append(feats)                 
-        # import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         # build mask head
         if hasattr(self, 'mask_head'):
             mask_head_partial = partial(self.mask_head, query_locs=query_locs, seg_fts_for_match=seg_fts_for_match, seg_masks=data_dict['seg_pad_masks'].logical_not(),

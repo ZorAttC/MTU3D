@@ -20,72 +20,88 @@ import copy
 class Sonata3DSegLevelEncoder(nn.Module):
     def __init__(self, cfg, backbone_kwargs, hidden_size, hlevels, freeze_backbone=False, dropout=0.1):
         super().__init__()
-        # free backbone or not
+        custom_config = dict(
+            mask_token=False,
+            freeze_encoder=freeze_backbone
+        )
+        self.backbone = sonata.load("sonata", repo_id="facebook/sonata",custom_config=custom_config).cuda()
+        
         self.context = torch.no_grad if freeze_backbone else nullcontext
-        self.backbone = sonata.load("sonata", repo_id="facebook/sonata").cuda()
+        self.feat_concat_upsample = True
         self.scatter_fn = scatter_mean
-        self.sizes = [512,896,1088,1184,1232]
+        self.sizes = [48, 96, 192, 384, 512]
         self.hlevels = hlevels + [4] # 4 is for the last level, always used for mask seg features
         self.feat_proj_list = nn.ModuleList([
                                     nn.Sequential(
                                         nn.Linear(size, hidden_size), 
                                         nn.LayerNorm(hidden_size),
                                         nn.Dropout(dropout)
-                                    ) for size in self.sizes])
-\
+                                    ) for size in reversed(self.sizes)])
+
     def forward(self, x, point2segment, max_seg):
-        multi_scale_feats_from_fine_to_coarse = []
+        # The backbone returns a list of feature maps.
+        # Per user: Index 0 has the fewest points (coarsest), and the last index has the most points (finest).
+        multi_scale_feats = []
         with self.context():
             point = self.backbone(x)
-            # From fine to coarse, collect all feature maps and their inverse indices
+            # Collect all feature maps and their inverse indices.
+            # The `inverse` map at index `j` is used to upsample from level `j-1` to `j`.
             while "pooling_parent" in point.keys():
-                # Store a copy of the current (finer) point cloud and the inverse map to its parent
                 inverse = point.pop("pooling_inverse")
-                multi_scale_feats_from_fine_to_coarse.append({'map': point, 'inverse': inverse})
-                
+                multi_scale_feats.append({'map': point, 'inverse': inverse})
                 parent = point.pop("pooling_parent")
-                # The original implementation concatenates features during downsampling.
-                # We will do this on the fly during upsampling instead.
                 point = parent
-            # Add the last, coarsest feature map
-            multi_scale_feats_from_fine_to_coarse.append({'map': point, 'inverse': None})
-
-        multi_scale_feats_from_coarse_to_fine = list(reversed(multi_scale_feats_from_fine_to_coarse))
+            # Add the last feature map (coarsest, which has no parent)
+            multi_scale_feats.append({'map': point, 'inverse': None})
         
+      
+      
         multi_scale_seg_feats = []
+        # multi_scale_feats[0]: 点数最少 512通道   multi_scale_feats[4]: 点数最多 48通道
+        # Iterate through each level `i` to generate a feature vector for it (0=coarsest, 4=finest)
+        for i in range(len(multi_scale_feats)):
+            
+            level_maps = [info['map'] for info in multi_scale_feats]
 
-        # Iterate from coarse to fine
-        for i in range(len(multi_scale_feats_from_coarse_to_fine)):
-            feat_map = multi_scale_feats_from_coarse_to_fine[i]['map']
+            # aggregated_feat = level_maps[i].feat
+            # for j in range(i,len(level_maps)-1):
+                
+            #     inverse_map = multi_scale_feats[j]['inverse']
+            #     map_feat = aggregated_feat
+            #     upsampled_feat = map_feat[inverse_map]
+            #     # Concatenate with the current level's original features
+            #     aggregated_feat = torch.cat([level_maps[j+1].feat, upsampled_feat], dim=-1)
+            upsampled_feat = level_maps[i].feat
+            for j in range(i,len(level_maps)-1):
+                
+                inverse_map = multi_scale_feats[j]['inverse']
+                upsampled_feat = upsampled_feat[inverse_map]
+                
+            
+            
+            # Now decompose the upsampled features by batch at the finest level
+            finest_map = level_maps[len(level_maps)-1]
+            num_batches = finest_map.batch.max().item() + 1
+            upsampled_decomposed_features = []
+            for batch_idx in range(num_batches):
+                batch_mask = (finest_map.batch == batch_idx)
+                upsampled_decomposed_features.append(upsampled_feat[batch_mask])
+
+            # Use the projection layer corresponding to the current level `i`
             feat_proj = self.feat_proj_list[i]
 
-            # Decompose features by batch manually
-            num_batches = feat_map.batch.max().item() + 1
-            decomposed_features = []
-            for batch_idx in range(num_batches):
-                batch_mask = (feat_map.batch == batch_idx)
-                decomposed_features.append(feat_map.feat[batch_mask])
-            
-            import pdb; pdb.set_trace()
-            # Calculate segment features for the current level
-            batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(decomposed_features, point2segment)]
+            # Calculate segment features using the original point2segment mapping, which corresponds to the finest level
+            batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(upsampled_decomposed_features, point2segment)]
             batch_feat = torch.stack(batch_feat)
             batch_feat = feat_proj(batch_feat)
             multi_scale_seg_feats.append(batch_feat)
 
-            # Upsample and concatenate features for the next (finer) level
-            if i + 1 < len(multi_scale_feats_from_coarse_to_fine):
-                next_level_info = multi_scale_feats_from_coarse_to_fine[i+1]
-                inverse_map = next_level_info['inverse']
-                next_feat_map = next_level_info['map']
-                
-                # Use inverse_map to bring current features to the finer resolution of the next level
-                upsampled_feat = feat_map.feat[inverse_map]
-                
-                # Concatenate with the original features of the next level
-                next_feat_map.feat = torch.cat([next_feat_map.feat, upsampled_feat], dim=-1)
+      
+        output_feats = [multi_scale_seg_feats[i] for i in self.hlevels]
+        
+        output_feats.reverse()
 
-        return multi_scale_seg_feats
+        return output_feats
 
 
 @VISION_REGISTRY.register()
@@ -94,7 +110,10 @@ class Sonata3DEncoder(nn.Module):
         super().__init__()
         # free backbone or not
         self.context = torch.no_grad if freeze_backbone else nullcontext
-        self.backbone = sonata.load("sonata", repo_id="facebook/sonata").cuda()
+        custom_config = dict(
+            freeze_encoder=freeze_backbone
+        )
+        self.backbone = sonata.load("sonata", repo_id="facebook/sonata",custom_config=custom_config).cuda()
         self.scatter_fn = scatter_mean
         self.sizes = [512,896,1088,1184,1232]
         self.feat_proj = nn.Sequential(

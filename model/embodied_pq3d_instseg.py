@@ -319,7 +319,7 @@ class EmbodiedPQ3DInstSegModelSPconv(BaseModel):
                     assert input == 'voxel'
                     feats[0] = feats[0][-1] # use the last scale of voxel features for segment matching
                 seg_fts_for_match.append(feats)                 
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         # build mask head
         if hasattr(self, 'mask_head'):
             mask_head_partial = partial(self.mask_head, query_locs=query_locs, seg_fts_for_match=seg_fts_for_match, seg_masks=data_dict['seg_pad_masks'].logical_not(),

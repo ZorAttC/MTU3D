@@ -20,16 +20,18 @@ import copy
 class Sonata3DSegLevelEncoder(nn.Module):
     def __init__(self, cfg, backbone_kwargs, hidden_size, hlevels, freeze_backbone=False, dropout=0.1):
         super().__init__()
+
+        sonata_version = backbone_kwargs.get("sonata_version", "sonata")
         custom_config = dict(
             mask_token=False,
             freeze_encoder=freeze_backbone
         )
-        self.backbone = sonata.load("sonata", repo_id="facebook/sonata",custom_config=custom_config).cuda()
+        self.backbone = sonata.load(sonata_version, repo_id="facebook/sonata",custom_config=custom_config).cuda()
         
         self.context = torch.no_grad if freeze_backbone else nullcontext
         self.feat_concat_upsample = True
         self.scatter_fn = scatter_mean
-        self.sizes = [48, 96, 192, 384, 512]
+        self.sizes = [48, 96, 192, 384, 512] if sonata_version=="sonata" else [32,64,128,256,512]
         self.hlevels = hlevels + [4] # 4 is for the last level, always used for mask seg features
         self.feat_proj_list = nn.ModuleList([
                                     nn.Sequential(

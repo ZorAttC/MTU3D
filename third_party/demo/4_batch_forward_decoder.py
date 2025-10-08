@@ -97,14 +97,22 @@ if __name__ == "__main__":
         #     inverse = point.pop("pooling_inverse")
         #     point = parent
         #     print(f"After upcast {_+1}: {point['coord'].shape[0]} points, {point.feat.shape[-1]} channels")
-        while "pooling_parent" in point.keys():
-            assert "pooling_inverse" in point.keys()
-            parent = point.pop("pooling_parent")
-            inverse = point.pop("pooling_inverse")
-            parent.feat = torch.cat([parent.feat, point.feat[inverse]], dim=-1)
-            point = parent
-            print(f"After upsample: {point['coord'].shape[0]} points, {point.feat.shape[-1]} channels")
-            # import pdb;pdb.set_trace()
+        import pdb;pdb.set_trace()
+        downsample_point = point
+        scaled_multi_layer_feat = []
+        inverse_map = []
+        scaled_multi_layer_feat.append(downsample_point.feat)
+        while "unpooling_parent" in downsample_point.keys():
+            parent = downsample_point.pop("unpooling_parent")
+            downsample_point = parent
+            # scaled_multi_layer_feat.append(downsample_point.feat)
+            inverse_map.append(downsample_point.pop("pooling_inverse"))
+            for i in range(len(inverse_map)):
+                downsample_point.feat= downsample_point.feat[inverse_map[len(inverse_map)-1 - i]]
+            scaled_multi_layer_feat.append(downsample_point.feat)
+            print("shape of current downsampled point feat:", downsample_point.feat.shape)
+            print(f"After unpooling inverse: {downsample_point['coord'].shape[0]} points, {downsample_point.feat.shape[-1]} channels")
+        
         # PCA
         pca_color = get_pca_color(point.feat, brightness=1.2, center=True)
         batched_coord = point.coord.clone()

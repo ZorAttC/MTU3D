@@ -64,7 +64,7 @@ class BaseTrainer():
         self.logger = get_logger(__name__)
         self.mode = cfg.mode
 
-        ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True, broadcast_buffers=False)
+        ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=False, broadcast_buffers=False)
         init_kwargs = InitProcessGroupKwargs(timeout=timedelta(seconds=216000))
         kwargs = ([ddp_kwargs] if cfg.num_gpu > 1 else []) + [init_kwargs]
 

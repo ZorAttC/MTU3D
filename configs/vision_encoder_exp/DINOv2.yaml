@@ -62,7 +62,7 @@ data:
     val_load_scan_max_num: 10
 
   scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
-  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv2_ViTL_518
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv2_ViTL
 
 # dataloader details
 dataloader:

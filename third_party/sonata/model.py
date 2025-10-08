@@ -789,7 +789,7 @@ def load(
         return ckpt
     print("ckpt['config']:", ckpt["config"])
     model = PointTransformerV3(**ckpt["config"])
-    model.load_state_dict(ckpt["state_dict"])
+    model.load_state_dict(ckpt["state_dict"],strict=False)
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"Model params: {n_parameters / 1e6:.2f}M")
     return model

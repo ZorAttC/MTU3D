@@ -15,6 +15,7 @@ from modules.third_party.mask3d.helpers_3detr import GenericMLP
 from modules.third_party.mask3d.position_embedding import PositionEmbeddingCoordsSine
 
 from modules.build import VISION_REGISTRY
+import time
 
 @VISION_REGISTRY.register()
 class PCDMask3DEncoder(nn.Module):
@@ -118,6 +119,9 @@ class PCDMask3DSegLevelEncoder(nn.Module):
         # free backbone or not
         self.context = torch.no_grad if freeze_backbone else nullcontext
         self.backbone = getattr(mask3d_models, "Res16UNet34C")(**backbone_kwargs)
+        # 统计backbone参数量（以M为单位）
+        num_params = sum(p.numel() for p in self.backbone.parameters())
+        print(f"Backbone parameter count: {num_params / 1e6:.2f}M")
         self.scatter_fn = scatter_mean
         self.sizes = self.backbone.PLANES[-5:]
         self.hlevels = hlevels + [4] # 4 is for the last level, always used for mask seg features
@@ -139,7 +143,10 @@ class PCDMask3DSegLevelEncoder(nn.Module):
         # import pdb; pdb.set_trace()
         with self.context():
             # minkowski backbone
+            start_time = time.time()
             pcds_features, aux = self.backbone(x)
+            inference_time = time.time() - start_time
+            print(f"Backbone inference time: {inference_time:.4f} seconds")
 
         multi_scale_seg_feats = []
         for hlevel, feat_proj in zip(self.hlevels, self.feat_proj_list):

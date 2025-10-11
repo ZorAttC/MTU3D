@@ -94,7 +94,7 @@ eval:
 #EmbodiedScanInstSegEvalGTMerge
 #EmbodiedScanInstSegEvalBoxMergeOpenVocab
 
-  name: EmbodiedScanInstSegEvalBoxMerge
+  name: EmbodiedScanInstSegEvalBoxMergeOpenVocab
   dataset_name: ScanNet
   pass_kwargs: True
   save: True

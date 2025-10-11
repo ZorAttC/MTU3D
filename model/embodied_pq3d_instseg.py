@@ -205,10 +205,22 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
             lr = get_lr(module_cfg, self.cfg.solver.lr)
             if lr != self.cfg.solver.lr:
                 print(f"Change lr from default {self.cfg.solver.lr} to {lr} for {name} module.")
-            optimizer_grouped_parameters += no_decay_param_group(module.named_parameters(), lr, name=name)
+            
+            # 只收集需要梯度的参数
+            trainable_params = [(n, p) for n, p in module.named_parameters() if p.requires_grad]
+            if len(trainable_params) > 0:
+                optimizer_grouped_parameters += no_decay_param_group(trainable_params, lr, name=name)
+            else:
+                print(f"Module {name} has no trainable parameters, skipping...")
 
         optimized_parameters = [p for group in optimizer_grouped_parameters for p in group['params']]
-        assert len(optimized_parameters) == len(list(self.parameters())), "Some parameters are not optimized!"
+        total_trainable_parameters = [p for p in self.parameters() if p.requires_grad]
+        
+        print(f"Total parameters: {len(list(self.parameters()))}")
+        print(f"Trainable parameters: {len(total_trainable_parameters)}")
+        print(f"Optimized parameters: {len(optimized_parameters)}")
+        
+        assert len(optimized_parameters) == len(total_trainable_parameters), f"Some parameters are not optimized! Optimized: {len(optimized_parameters)}, Trainable: {len(total_trainable_parameters)}"
         return optimizer_grouped_parameters
 
 
@@ -393,9 +405,21 @@ class EmbodiedPQ3DInstSegModelSPconv(BaseModel):
             lr = get_lr(module_cfg, self.cfg.solver.lr)
             if lr != self.cfg.solver.lr:
                 print(f"Change lr from default {self.cfg.solver.lr} to {lr} for {name} module.")
-            optimizer_grouped_parameters += no_decay_param_group(module.named_parameters(), lr, name=name)
+            
+            # 只收集需要梯度的参数
+            trainable_params = [(n, p) for n, p in module.named_parameters() if p.requires_grad]
+            if len(trainable_params) > 0:
+                optimizer_grouped_parameters += no_decay_param_group(trainable_params, lr, name=name)
+            else:
+                print(f"Module {name} has no trainable parameters, skipping...")
 
         optimized_parameters = [p for group in optimizer_grouped_parameters for p in group['params']]
-        assert len(optimized_parameters) == len(list(self.parameters())), "Some parameters are not optimized!"
+        total_trainable_parameters = [p for p in self.parameters() if p.requires_grad]
+        
+        print(f"Total parameters: {len(list(self.parameters()))}")
+        print(f"Trainable parameters: {len(total_trainable_parameters)}")
+        print(f"Optimized parameters: {len(optimized_parameters)}")
+        
+        assert len(optimized_parameters) == len(total_trainable_parameters), f"Some parameters are not optimized! Optimized: {len(optimized_parameters)}, Trainable: {len(total_trainable_parameters)}"
         return optimizer_grouped_parameters
         

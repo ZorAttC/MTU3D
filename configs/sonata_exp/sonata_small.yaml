@@ -118,13 +118,11 @@ model:
     args:
       backbone_kwargs:
         sonata_version: "sonata_small" # "sonata" or "sonata_small"
-        config:
-          dialations: [ 1, 1, 1, 1 ]
-          conv1_kernel_size: 5
-          bn_momentum: 0.02
-        in_channels: 3
-        out_channels: 200
-        out_fpn: true
+        dec_depths: [2,2,2,2]
+        dec_channels: [64, 64, 128, 256]
+        dec_num_head: [4, 4, 8, 16]
+        enc_mode: False
+        freeze_encoder: True
       freeze_backbone: False # train only the projection layer
       hlevels: [0,1,2,3]
       hidden_size: ${model.hidden_size}

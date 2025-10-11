@@ -21,10 +21,11 @@ import torch
 import numpy as np
 try:
     import flash_attn
+
     print(f"Flash attention version: {flash_attn.__version__}")
 except ImportError:
     flash_attn = None
-
+import time
 
 def get_pca_color(feat, brightness=1.25, center=True):
     u, s, v = torch.pca_lowrank(feat, center=center, q=6, niter=5)
@@ -46,7 +47,10 @@ if __name__ == "__main__":
     # Load model
     custom_config = dict(
           
-           enc_mode=False
+           enc_mode=False,
+           dec_depths= [1,1,1,1],
+           dec_channels= [64, 64, 128, 256],
+           dec_num_head= [4, 4, 8, 16]
         )
     if flash_attn is not None:
         model = sonata.load("sonata_small", repo_id="facebook/sonata",custom_config=custom_config).cuda()
@@ -65,6 +69,9 @@ if __name__ == "__main__":
     point1.pop("segment200")
     segment = point1.pop("segment20")
     point1["segment"] = segment  # two kinds of segment exist in ScanNet, only use one
+    point1["coord"] = point1["coord"][:20000] 
+    point1["color"] = point1["color"][:20000]
+    point1["normal"]= point1["normal"][:20000]
     print("shape of point1 segment:", point1["segment"].shape)
     print("shape of point1 coord:", point1["coord"].shape)
     original_coord = point1["coord"].copy()
@@ -84,6 +91,14 @@ if __name__ == "__main__":
             if isinstance(point[key], torch.Tensor):
                 point[key] = point[key].cuda(non_blocking=True)
         # model forward:
+        # warmup
+        _ = model(point)
+        # timing
+        start = time.time()
+        for _ in range(20):
+            _ = model(point)
+        end = time.time()
+        print(f"Average inference time per run: {(end - start) / 20:.4f} seconds")
         point = model(point)
         # upcast point feature
         # Point is a structure contains all the information during forward

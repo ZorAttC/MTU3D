@@ -24,7 +24,85 @@ class Sonata3DSegLevelEncoder(nn.Module):
         sonata_version = backbone_kwargs.get("sonata_version", "sonata")
         custom_config = dict(
             mask_token=False,
-            freeze_encoder=freeze_backbone
+            freeze_encoder=backbone_kwargs.get("freeze_encoder", False),
+            dec_depths= backbone_kwargs.get("dec_depths", [1,1,1,1]),
+            dec_channels= backbone_kwargs.get("dec_channels", [64, 64, 128, 256]),
+            dec_num_head= backbone_kwargs.get("dec_num_head", [4, 4, 8, 16]),
+            enc_mode= False
+        )
+        self.backbone = sonata.load(sonata_version, repo_id="facebook/sonata",custom_config=custom_config).cuda()
+        
+        self.context = torch.no_grad if freeze_backbone else nullcontext
+        self.scatter_fn = scatter_mean
+        self.sizes = custom_config['dec_channels']
+        self.hlevels = [i for i in range(len(self.sizes))]
+        self.feat_proj_list = nn.ModuleList([
+                                    nn.Sequential(
+                                        nn.Linear(size, hidden_size), 
+                                        nn.LayerNorm(hidden_size),
+                                        nn.Dropout(dropout)
+                                    ) for size in self.sizes])
+
+    def forward(self, x, point2segment, max_seg):
+        with self.context():
+            downsample_point = self.backbone(x)
+        
+        scaled_multi_layer_feat = []
+        inverse_map = []
+        scaled_multi_layer_feat.append(downsample_point.feat)
+        batch = downsample_point.batch
+            
+        
+        while "unpooling_parent" in downsample_point.keys():
+            parent = downsample_point.pop("unpooling_parent")
+            inverse = parent.pop("pooling_inverse")
+            downsample_point = parent
+            
+            
+            inverse_map.append(inverse)
+            # Apply all inverse mappings in reverse order to upsample the features
+            upsampled_feat = downsample_point.feat
+            for i in range(len(inverse_map)):
+                upsampled_feat = upsampled_feat[inverse_map[len(inverse_map)-1 - i]]
+            scaled_multi_layer_feat.append(upsampled_feat)
+
+            
+        multi_scale_seg_feats = []
+        # Iterate through each level `i` to generate a feature vector for it
+        for i in range(len(self.sizes)):
+            
+            feat = scaled_multi_layer_feat[i]
+            # Now decompose the upsampled features by batch at the finest level
+            num_batches = batch.max().item() + 1
+            decomposed_features = []
+            for batch_idx in range(num_batches):
+                batch_mask = (batch == batch_idx)
+                decomposed_features.append(feat[batch_mask])
+
+            # Use the projection layer corresponding to the current level `i`
+            feat_proj = self.feat_proj_list[i]
+
+            # Calculate segment features using the original point2segment mapping, which corresponds to the finest level
+            batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(decomposed_features, point2segment)]
+            batch_feat = torch.stack(batch_feat)
+            batch_feat = feat_proj(batch_feat)
+            multi_scale_seg_feats.append(batch_feat)
+        multi_scale_seg_feats.reverse()
+
+        return multi_scale_seg_feats    
+@VISION_REGISTRY.register()
+class Sonata3DSegLevelEncoder_no_decoder(nn.Module):
+    def __init__(self, cfg, backbone_kwargs, hidden_size, hlevels, freeze_backbone=False, dropout=0.1):
+        super().__init__()
+
+        sonata_version = backbone_kwargs.get("sonata_version", "sonata")
+        custom_config = dict(
+            mask_token=False,
+            freeze_encoder=freeze_backbone,
+            dec_depths= [1,1,1,1],
+            dec_channels= [64, 64, 128, 256],
+            dec_num_head= [4, 4, 8, 16],
+            enc_mode= False
         )
         self.backbone = sonata.load(sonata_version, repo_id="facebook/sonata",custom_config=custom_config).cuda()
         

@@ -18,7 +18,7 @@ logger:
   name: wandb
   entity: cyh200206
   autoname: true
-  run_id: rxas2g5f
+  run_id: up7732kd
 data:
   train:
   - EmbodiedScanInstSegScanNet
@@ -79,7 +79,7 @@ solver:
     args:
       warmup_steps: 100
 eval:
-  name: EmbodiedScanInstSegEvalBoxMerge
+  name: EmbodiedScanInstSegEvalBoxMergeOpenVocab
   dataset_name: ScanNet
   pass_kwargs: true
   save: true
@@ -179,3 +179,4 @@ model:
       cost_score: 0.5
       cost_mask: 1.0
       cost_dice: 1.0
+pretrain_ckp_path: /hdd/caoyuhao/VLN_ws/MTU3D/outputs/Embodied-PQ3D/ckpt

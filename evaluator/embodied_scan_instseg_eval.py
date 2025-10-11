@@ -319,7 +319,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         if self.cur_scan_id is None:
             self.cur_scan_id = scan_id
         elif self.cur_scan_id != scan_id:
-            self.representation_manger.save_colored_point_cloud_ply(f"debug_{self.cur_scan_id}_{sub_frame_id}.ply")
+            # self.representation_manger.save_colored_point_cloud_ply(f"debug_{self.cur_scan_id}_{sub_frame_id}.ply")
             self.flush_representation_manager()
             self.cur_scan_id = scan_id
         # merge
@@ -582,7 +582,7 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
                 'open_vocab_feats': embeds,
             }]
             self.representation_manger.merge(predict_dict_list)
-            self.representation_manger.save_colored_point_cloud_ply(f"./outputs/debug_{self.cur_scan_id}_{sub_frame_id}.ply")
+            # self.representation_manger.save_colored_point_cloud_ply(f"./outputs/debug_{self.cur_scan_id}_{sub_frame_id}.ply")
             
         # update representation
         self.total_count += metrics["total_count"]

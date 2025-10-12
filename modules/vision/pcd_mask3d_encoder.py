@@ -147,7 +147,7 @@ class PCDMask3DSegLevelEncoder(nn.Module):
             pcds_features, aux = self.backbone(x)
             inference_time = time.time() - start_time
             print(f"Backbone inference time: {inference_time:.4f} seconds")
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         multi_scale_seg_feats = []
         for hlevel, feat_proj in zip(self.hlevels, self.feat_proj_list):
             feat = aux[hlevel]

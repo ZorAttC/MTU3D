@@ -255,7 +255,7 @@ class QueryEncoderLayer(nn.Module):
         if structure == 'gate':
             self.gate_proj = nn.Linear(d_model, d_model)
 
-    def forward(self, query, input_dict, pairwise_locs=None):
+    def forward(self, query, input_dict, pairwise_locs=None, attn_mask=None):
         _, query_masks, query_pos = input_dict['query']
 
         def sequential_ca(query, memories):
@@ -271,19 +271,26 @@ class QueryEncoderLayer(nn.Module):
                 query = cross_attn(tgt=query, memory=feat, attn_mask=attn_mask, memory_key_padding_mask = memory_key_padding_mask, query_pos = query_pos, pos = pos)
             return query
 
-        def parallel_ca(query, memories):
+        def parallel_ca(query, memories, attn_mask=None):
             assert 'prompt' not in memories
             query_list = []
             for memory in memories:
                 cross_attn = self.memory2ca[memory]
                 feat, mask, pos = input_dict[memory] 
-                if mask.ndim == 2:
-                    memory_key_padding_mask = mask
-                    attn_mask = None
+                
+                # 使用局部变量
+                current_attn_mask = attn_mask
+                current_memory_key_padding_mask = None
+
+                if current_attn_mask is not None:
+                    current_memory_key_padding_mask = mask
+                elif mask.ndim == 2:
+                    current_memory_key_padding_mask = mask
+                    current_attn_mask = None
                 else:
-                    memory_key_padding_mask = None
-                    attn_mask = mask
-                update = cross_attn(tgt=query, memory=feat, attn_mask=attn_mask, memory_key_padding_mask = memory_key_padding_mask, query_pos = query_pos, pos = pos)
+                    current_memory_key_padding_mask = None
+                    current_attn_mask = mask
+                update = cross_attn(tgt=query, memory=feat, attn_mask=current_attn_mask, memory_key_padding_mask=current_memory_key_padding_mask, query_pos=query_pos, pos=pos)
                 query_list.append(update)
             # training time memory dropout
             if self.training and self.memory_dropout > 0.0:
@@ -302,15 +309,15 @@ class QueryEncoderLayer(nn.Module):
         if self.structure == 'sequential':
             query = sequential_ca(query, memories)
         elif self.structure == 'parallel':
-            query = parallel_ca(query, memories)
+            query = parallel_ca(query, memories, attn_mask=attn_mask)
         elif self.structure == 'mixed':
             # [mv,pc,vx] + prompt
-            query = parallel_ca(query, [m for m in memories if m != 'prompt'])
+            query = parallel_ca(query, [m for m in memories if m != 'prompt'], attn_mask=attn_mask)
             query = sequential_ca(query, ['prompt'])
         elif self.structure == 'gate':
             prompt = sequential_ca(query, ['prompt'])
             gate = torch.sigmoid(self.gate_proj(prompt))
-            update = parallel_ca(query, [m for m in self.memories if m != 'prompt'])
+            update = parallel_ca(query, [m for m in self.memories if m != 'prompt'], attn_mask=attn_mask)
             query = (1. - gate) * query + gate * update
         else:
             raise NotImplementedError(f"Unknow structure type: {self.structure}")

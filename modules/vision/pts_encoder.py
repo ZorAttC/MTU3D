@@ -57,7 +57,7 @@ class PCDESAMSegLevelEncoder(nn.Module):
             pcds_w: (N, 1) geometry weight for each point
         '''
         # import pdb; pdb.set_trace()
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         with self.context():
             # minkowski backbone
             

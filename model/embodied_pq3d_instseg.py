@@ -99,7 +99,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
                 mask = data_dict['mv_seg_pad_masks'].logical_not()
                 pos = fts_pos
             elif input == 'voxel':
-                import pudb; pudb.set_trace() 
+                # import pudb; pudb.set_trace() 
                 voxel_features = data_dict['voxel_features']
                 voxel_coordinates = data_dict['voxel_coordinates']
                 x = ME.SparseTensor(coordinates=voxel_coordinates, features=voxel_features[:, :-3], device=voxel_features.device)
@@ -165,7 +165,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
             assert query.shape == input_dict['query'][0].shape, f"Query shape {query.shape} does not match input shape {input_dict['query'][0].shape}"
             input_dict['query'] = (query, input_dict['query'][1], input_dict['query'][2])
         # unified encoding    
-        import pudb; pudb.set_trace()                       
+        # import pudb; pudb.set_trace()                       
         query, predictions_score, predictions_class, predictions_mask, predictions_box = self.unified_encoder(input_dict, pairwise_locs, mask_head_partial)
         data_dict['query_feat'] = query
         
@@ -322,7 +322,7 @@ class EmbodiedCRTInstSegModel(BaseModel):
                 pos = fts_pos
 
 
-                import pudb; pudb.set_trace()  
+                # import pudb; pudb.set_trace()  
                 pts_mask = data_dict['voxel_pad_masks'].logical_not() #(20000,)
                 voxel_to_full_maps = data_dict['voxel_to_full_maps']
                 voxel_feat=pts_feat.decomposed_features
@@ -330,7 +330,7 @@ class EmbodiedCRTInstSegModel(BaseModel):
                 pts_feat_list=[v_feat[idx] for v_feat,idx in zip(voxel_feat,voxel_to_full_maps)]
                 pts2spidx = [v2s[v2p] for v2s, v2p in zip(data_dict['voxel2segment'], voxel_to_full_maps)]
               
-                pts_feat_batched=torch.stack(pts_feat_list,dim=0).detach().cpu()
+                pts_feat_batched=torch.stack(pts_feat_list,dim=0).detach().cuda()
 
                 pts_pos_batched=torch.from_numpy(np.stack([p[:,:3] for p in data_dict['raw_coordinates']],axis=0)).cuda()
 
@@ -382,25 +382,25 @@ class EmbodiedCRTInstSegModel(BaseModel):
     
         
         # unified encoding    
-        import pudb; pudb.set_trace()                       
-        query, predictions_score, predictions_class, predictions_mask, predictions_box = self.unified_encoder(input_dict, pairwise_locs,pcds_w,pts2spidx)
+        # import pudb; pudb.set_trace()                       
+        query, pred_ins_cls, predictions_class, predictions_mask, predictions_score, predictions_box = self.unified_encoder(input_dict, pairwise_locs, pcds_w, pts2spidx)
         data_dict['query_feat'] = query
         
 
         # task head
         for head in self.heads:
             if head == 'mask':
-                data_dict['predictions_score'] = predictions_score
-                data_dict['predictions_class'] = predictions_class
-                data_dict['predictions_mask'] = predictions_mask
-                data_dict['predictions_box'] = predictions_box  
+                data_dict['predictions_score'] = [predictions_score[-1]]
+                data_dict['predictions_class'] = [predictions_class[-1]]
+                data_dict['predictions_mask'] = [predictions_mask[-1]]
+                data_dict['predictions_box'] = [predictions_box[-1]]
                 continue
             elif head == 'openvocab':
                 openvocab_query_feat = getattr(self, 'openvocab_head')(query)
                 data_dict['openvocab_query_feat'] = openvocab_query_feat
             else:
                 raise NotImplementedError(f"Unknow head type: {head}")
-       
+        import pudb; pudb.set_trace()
         return data_dict
 
     def get_opt_params(self):

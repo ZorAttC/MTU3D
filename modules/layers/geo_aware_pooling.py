@@ -45,7 +45,7 @@ class GeoAwarePooling(nn.Module):
             sp_idx: (B,N,) long Tensor, point to superpoint index
             all_xyz: (B, N, 3) float Tensor, point coordinates
         """
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         B, N, C = pts_feat.shape
         all_xyz_flat = all_xyz.view(B * N, 3)
         pts_feat_flat = pts_feat.view(B * N, C)

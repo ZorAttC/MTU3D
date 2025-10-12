@@ -687,7 +687,7 @@ class ScanNetMixQueryDecoder(QueryDecoder):
 @GROUNDING_REGISTRY.register()
 class EmbodiedSAMDecoder(nn.Module):
     def __init__(self, cfg, memories=[], hidden_size=768, num_attention_heads=12, share_layer=False, structure='sequential',num_layers=4,
-                 num_blocks=1, hlevels=[0,1,2,3], spatial_selfattn=False, attn_mask=True,mask_pred_mode=['','SP','SP','SP'], cross_attn_mode=["SP", "SP", "P", "P"],
+                 num_blocks=1, hlevels=[0,1,2,3], spatial_selfattn=False, attn_mask=True,mask_pred_mode=['SP','SP','P','P'], cross_attn_mode=["", "SP", "SP", "SP"],
                  num_instance_classes=1, num_semantic_classes=200):
         super().__init__()
 
@@ -700,7 +700,8 @@ class EmbodiedSAMDecoder(nn.Module):
         num_heads = 8
         in_channels = 96
         self.input_proj = nn.Sequential(
-            nn.Linear(hidden_size, d_model), nn.LayerNorm(d_model), nn.ReLU())
+            nn.Linear(hidden_size, d_model), 
+            nn.LayerNorm(d_model), nn.ReLU())
         self.cross_attn_mode = cross_attn_mode
         self.mask_pred_mode = mask_pred_mode
         self.attn_mask = attn_mask 
@@ -711,17 +712,19 @@ class EmbodiedSAMDecoder(nn.Module):
                             nn.Linear(3 + in_channels, d_model), nn.ReLU(),
                             nn.Linear(d_model, d_model))
         self.x_mask = nn.Sequential(
-            nn.Linear(hidden_size, d_model), nn.ReLU(),
-            nn.Linear(d_model, d_model))
+            nn.Linear(hidden_size, hidden_size), nn.ReLU(),
+            nn.Linear(hidden_size, d_model))
         
-        self.out_norm = nn.LayerNorm(d_model)
+        self.out_norm = nn.LayerNorm(hidden_size)
         self.out_cls = nn.Sequential(
-            nn.Linear(d_model, d_model), nn.ReLU(),
-            nn.Linear(d_model, num_instance_classes + 1))
+            nn.Linear(hidden_size, hidden_size), nn.ReLU(),
+            nn.Linear(hidden_size, num_instance_classes + 1)) # instance or not
         self.out_reg = nn.Sequential(
-                nn.Linear(d_model, d_model), nn.ReLU(),
-                nn.Linear(d_model, 6))
-        self.out_sem = nn.Linear(d_model, num_semantic_classes + 1)
+                nn.Linear(hidden_size, hidden_size), nn.ReLU(),
+                nn.Linear(hidden_size, 6))
+        self.out_sem = nn.Linear(hidden_size, num_semantic_classes + 1)
+        self.out_score = nn.Sequential(
+                nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, 1))
 
         self.apply(_init_weights_bert)
         
@@ -748,7 +751,7 @@ class EmbodiedSAMDecoder(nn.Module):
                 List[Tensor] or None: Attention masks of len batch_size,
                     each of shape (n_queries_i, n_points_i).
         """
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         cls_preds, sem_preds, pred_scores, pred_masks, attn_masks, pred_bboxes = [], [], [], [], [], []
        
         for i in range(len(queries)):
@@ -757,7 +760,7 @@ class EmbodiedSAMDecoder(nn.Module):
             cls_preds.append(self.out_cls(norm_query))
             if last_flag:
                 sem_preds.append(self.out_sem(norm_query))
-            pred_score = None
+            pred_score = self.out_score(norm_query)
             pred_scores.append(pred_score)
            
             reg_final = self.out_reg(norm_query)
@@ -766,15 +769,17 @@ class EmbodiedSAMDecoder(nn.Module):
         
             pred_bboxes.append(pred_bbox)
             if self.mask_pred_mode[layer] == "SP":
-                pred_mask = torch.einsum('nd,md->nm', norm_query, mask_feats[i])
+                proj_query= self.input_proj(norm_query)
+                pred_mask = torch.einsum('nd,md->nm', proj_query, mask_feats[i])
             elif self.mask_pred_mode[layer] == "P":
-                pred_mask = torch.einsum('nd,md->nm', norm_query, mask_pts_feats[i])
+                proj_query= self.input_proj(norm_query)
+                pred_mask = torch.einsum('nd,md->nm', proj_query, mask_pts_feats[i])
             else:
                 raise NotImplementedError("Query decoder not implemented!")
             if self.attn_mask:
                 attn_mask = (pred_mask.sigmoid() < 0.5).bool()
                 attn_mask[torch.where(
-                    attn_mask.sum(-1) == attn_mask.shape[-1])] = False
+                    attn_mask.sum(-1) == attn_mask.shape[-1])] = False #全true会导致CA结果为nan
                 attn_mask = attn_mask.detach()
                 attn_masks.append(attn_mask)
             pred_masks.append(pred_mask)
@@ -795,27 +800,36 @@ class EmbodiedSAMDecoder(nn.Module):
 
         cls_preds, sem_preds, pred_scores, pred_masks = [], [], [], []
         object_queries, pred_bboxes = [], []
-        query = input_dict['query'][0]
+        queries = input_dict['query'][0]
         p_feats = input_dict['pts'][0]
         sp_feats= input_dict['voxel'][0][-1]#last layer of voxel features
+        input_dict['voxel'][0] = input_dict['voxel'][0][-1] #select the last layer of voxel features
         pts_w  = pcds_w#list
         point2sp = pts2spidx#list
-        import pudb; pudb.set_trace()
-        # inst_feats = self.input_proj(sp_feats)
+        # import pudb; pudb.set_trace()
+    
         mask_feats = self.x_mask(sp_feats)
         mask_pts_feats = self.x_pts_mask(torch.cat([input_dict['pts'][2], p_feats], dim=-1))
         
         cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
              self._forward_head(queries, mask_feats, mask_pts_feats, last_flag=False, layer=0) #得到各类预测输出一次
         
-        for i in range(len(self.cross_attn_layers)):#三层
+       
+        for i in range(3):#三层
             if self.cross_attn_mode[i+1] == "SP" and self.mask_pred_mode[i] == "SP":
-                pass
-                # print("SP SP queries", queries[0].shape)
+                # attn_mask: list of (N, N), batch size = B
+                # Stack to (B, N, N)
+                # import pudb; pudb.set_trace()
+                attn_mask = torch.stack(attn_mask, dim=0)  # (B, N, N)
+                attn_mask = attn_mask.repeat_interleave(self.num_heads, dim=0)
+              
             elif self.cross_attn_mode[i+1] == "SP" and self.mask_pred_mode[i] == "P":   # current method, change P mask to SP
-                
+                # import pudb; pudb.set_trace()
                 xyz_weights = pts_w #list of pts weight
                 sp_ids = point2sp
+                # 将不同尺寸的掩码填充为相同尺寸，然后堆叠
+                # 1. 找到批次中最大的超点数量
+                max_sp_len = attn_mask[0].shape[0]
                 attn_mask_score = [scatter_mean(att.float() * xyz_w.view(1, -1), sp, dim=1)
                      for att, sp, xyz_w in zip(attn_mask, sp_ids, xyz_weights)]
                 attn_mask = [(att > 0.5).bool() for att in attn_mask_score] # > 0.5, not <  #注意力遮罩
@@ -826,9 +840,28 @@ class EmbodiedSAMDecoder(nn.Module):
                     mask = ~(attn_mask_score[j] == attn_mask_score[j].min(dim=1, keepdim=True)[0])
                     attn_mask[j] *= mask
 
-                input_dict['voxel'][1] = torch.stack(attn_mask)
-                input_dict['mv'][1] = torch.stack(attn_mask)
-            queries = self.unified_encoder[i](queries, input_dict, pairwise_locs)
+               
+                
+                # 2. 创建一个填充后的张量列表
+                padded_masks = []
+                for m in attn_mask:
+                    pad_len = max_sp_len - m.shape[1]
+                    # 使用 F.pad 进行填充。我们填充最后一个维度（宽度）
+                    # (0, pad_len) 表示在最后一个维度的左边不填充，右边填充 pad_len 个
+                    # value=True 表示用 True 来填充，因为 True 在注意力中代表“忽略”
+                    padded_mask = torch.nn.functional.pad(m, (0, pad_len), mode='constant', value=True)
+                    padded_masks.append(padded_mask)
+
+                # 3. 使用 torch.stack 将填充后的张量列表堆叠成一个批处理张量
+                attn_mask_batched = torch.stack(padded_masks, dim=0)  # 形状变为 [B, Q, max_S]
+               
+                # 4. 为多头注意力机制重复张量
+                attn_mask = attn_mask_batched.repeat_interleave(self.num_heads, dim=0)
+              
+
+             
+            # import pudb; pudb.set_trace()
+            queries = self.unified_encoder[i](queries, input_dict, pairwise_locs,attn_mask)
 
             last_flag = 2 == i
             cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
@@ -841,5 +874,5 @@ class EmbodiedSAMDecoder(nn.Module):
 
 
 
-       
-        return query, cls_preds, sem_preds,pred_masks,pred_scores,pred_bboxes
+
+        return queries, cls_preds, sem_preds, pred_masks, pred_scores, pred_bboxes

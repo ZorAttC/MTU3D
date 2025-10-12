@@ -410,6 +410,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
     def batch_metrics(self, data_dict):
         metrics = {}
         metrics["total_count"] = len(data_dict['predictions_class'][0])
+        # import pudb; pudb.set_trace()
         assert metrics["total_count"] == 1
         return metrics
 

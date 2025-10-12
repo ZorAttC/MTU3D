@@ -535,6 +535,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         voxel_coordinates = voxel_coordinates[unique_map]
         voxel_features = features[unique_map]
         voxel2seg_id = point2seg_id[unique_map]
+        voxel_pad_masks = torch.arange(20000) < len(voxel_coordinates)
         
         # sample queries
         query_locs, query_pad_masks, query_selection_ids = self.sample_query(voxel_coordinates, coordinates, obj_center, seg_center)
@@ -542,6 +543,7 @@ class EmbodiedScanInstseg(EmbodiedScanBase):
         # fill data dict
         data_dict = {
             # input data
+            "voxel_pad_masks": voxel_pad_masks, # (20000), 1 for valid, 0 for padding
             "voxel_coordinates": voxel_coordinates,
             "voxel_features": voxel_features,
             "voxel2segment": voxel2seg_id, # list collate

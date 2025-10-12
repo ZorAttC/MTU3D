@@ -72,7 +72,7 @@ class QueryMaskEncoder(nn.Module):
         
         query = input_dict['query'][0]
         voxel_feat = input_dict['voxel'][0] if 'voxel' in input_dict.keys() else None
-
+        
         for block_counter in range(self.num_blocks):
             for i, layer in enumerate(self.unified_encoder):
                 if mask_head is not None:
@@ -409,7 +409,7 @@ class CrossAttentionLayer(nn.Module):
         batch_first=False,
     ):
         super().__init__()
-        self.multihead_attn = nn.MultiheadAttention(
+        self.multihead_attn = nn.MultiheadAttention( # attn_mask:True is not to attend
             d_model, nhead, dropout=dropout, batch_first=batch_first, add_zero_attn=True
         )
 

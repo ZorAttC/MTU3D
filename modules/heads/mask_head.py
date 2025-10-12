@@ -207,6 +207,33 @@ class MaskPredictionLayer(nn.Module):
     
 @HEADS_REGISTRY.register()
 class MaskHeadSegLevelWithBox(nn.Module):
+    """
+MaskHeadSegLevelWithBox 是一个用于分割级别掩码预测并回归包围盒的神经网络头模块。
+
+参数:
+    cfg: 配置对象。
+    hidden_size (int): 隐藏层维度。
+    num_targets (int): 分类目标类别数。
+    memories_for_match (list, 可选): 用于掩码预测的记忆类型列表，默认['voxel']。
+    filter_out_classes (list 或 None, 可选): 需要过滤掉的类别索引，默认None。
+    dropout (float, 可选): MLP头的dropout率，默认0.1。
+
+属性:
+    cls_head (nn.Module): 分类MLP头。
+    box_head (nn.Module): 包围盒回归MLP头。
+    query_activation_head (nn.Module): 查询激活（目标性）MLP头。
+    filter_out_classes (list 或 None): 需要过滤掉的类别。
+    mask_pred_list (nn.ModuleList): 每种记忆类型对应的掩码预测层列表。
+
+方法:
+    forward(query, query_locs, seg_fts_for_match, seg_masks, offline_attn_masks=None, skip_prediction=False):
+        前向推理，预测分类logits、查询激活、包围盒和掩码logits。
+        如果 skip_prediction 为 True，则返回 None。
+        对指定类别进行过滤。
+        对每种记忆类型计算掩码logits并聚合。
+        对指定分割掩码进行忽略处理。
+        返回查询激活logits、分类logits、掩码logits、包围盒预测和注意力掩码。
+"""
     def __init__(self, cfg, hidden_size, num_targets, memories_for_match=['voxel'], filter_out_classes=None, dropout=0.1):
         super().__init__()
 
@@ -250,7 +277,6 @@ class MaskHeadSegLevelWithBox(nn.Module):
         else:
             attn_mask = mask_logits.sigmoid().permute(0, 2, 1).detach() < 0.5
         return query_activation_logits, cls_logits, mask_logits, box_prediction, attn_mask
-
 @HEADS_REGISTRY.register()
 class OpenVocabHead(nn.Module):
     def __init__(self, cfg, hidden_dim=768, out_dim=768):

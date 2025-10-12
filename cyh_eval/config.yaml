@@ -18,7 +18,7 @@ logger:
   name: wandb
   entity: cyh200206
   autoname: true
-  run_id: up7732kd
+  run_id: be5sp6kg
 data:
   train:
   - EmbodiedScanInstSegScanNet

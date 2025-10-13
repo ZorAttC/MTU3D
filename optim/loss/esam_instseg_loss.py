@@ -135,7 +135,7 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         loss_cfg = cfg.model.get(self.__class__.__name__)
 
         # training objective
-        self.mask_type = "segment_mask"
+        self.mask_type = "pts_mask"
         # matcher
         self.matcher = EmbodiedMatcher(**loss_cfg.matcher)
         # loss weight
@@ -175,9 +175,9 @@ class EmbodiedSAMInstSegLoss(nn.Module):
             # classification loss
             loss_ce.append(F.cross_entropy(outputs[bid]['pred_classes'], targets[bid]['query_labels']))
             # mask loss
-            loss_mask.append(sigmoid_ce_loss_jit(outputs[bid]['pred_masks'][:, indices[bid][0]].T, targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+            loss_mask.append(sigmoid_ce_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
             # dice loss
-            loss_dice.append(dice_loss_jit(outputs[bid]['pred_masks'][:, indices[bid][0]].T, targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+            loss_dice.append(dice_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
             # score loss
             score_target = outputs[bid]['pred_scores'].new_zeros(outputs[bid]['pred_scores'].shape[0])
             score_target[indices[bid][0]] = 1.0
@@ -210,7 +210,7 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         query_pad_mask = data_dict['query_pad_masks']
         seg_pad_masks = data_dict['seg_pad_masks']
         for l in range(len(predictions_mask)):
-            predictions_mask[l] = [predictions_mask[l][bid][:, query_pad_mask[bid].bool()][seg_pad_masks[bid].bool(), :] for bid in range(bs)]
+            predictions_mask[l] = [predictions_mask[l][bid][query_pad_mask[bid].bool(),:] for bid in range(bs)] #(query,pts)
             predictions_class[l] = [predictions_class[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
             predictions_box[l] = [predictions_box[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
             predictions_score[l] = [predictions_score[l][bid][query_pad_mask[bid].bool()] for bid in range(bs)]
@@ -227,6 +227,18 @@ class EmbodiedSAMInstSegLoss(nn.Module):
             # build target
             targets = [{'masks': segment_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
                         'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)] 
+        elif self.mask_type == "pts_mask":
+            segment_labels = data_dict['segment_labels']
+            segment_masks = data_dict['segment_masks']
+            instance_pts_masks = data_dict['full_masks']
+            instance_boxes = data_dict['instance_boxes']
+            instance_labels = data_dict['instance_labels']
+            instance_text_embeds = data_dict['instance_text_embeds']
+            query_selection_ids = data_dict['query_selection_ids']
+            instance_scores = [torch.ones(segment_masks[bid].shape[0], dtype=torch.long, device=segment_masks[bid].device) for bid in range(len(segment_masks))]
+            # build target
+            targets = [{'masks': instance_pts_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
+                        'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)]
         else:
             raise NotImplementedError
         # compute loss for last layer

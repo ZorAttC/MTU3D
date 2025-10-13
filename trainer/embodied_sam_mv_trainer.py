@@ -7,7 +7,7 @@ from trainer.build import BaseTrainer
 
 
 @TRAINER_REGISTRY.register()
-class EmbodiedStage1Trainer(BaseTrainer):
+class ESAM_MV_Trainer(BaseTrainer):
     def __init__(self, cfg):
         super().__init__(cfg)
         self.compute_loss_eval = cfg.eval.get("compute_loss_eval", False)

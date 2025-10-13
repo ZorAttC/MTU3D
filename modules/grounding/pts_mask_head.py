@@ -783,8 +783,8 @@ class EmbodiedSAMDecoder(nn.Module):
                 attn_mask = attn_mask.detach()
                 attn_masks.append(attn_mask)
             pred_masks.append(pred_mask)
-        attn_masks = attn_masks if self.attn_mask else None
-        sem_preds = sem_preds if last_flag else None
+
+       
         return cls_preds, sem_preds, pred_scores, pred_masks, attn_masks, pred_bboxes
 
 
@@ -866,11 +866,12 @@ class EmbodiedSAMDecoder(nn.Module):
             last_flag = 2 == i
             cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
                  self._forward_head(queries, mask_feats, mask_pts_feats, last_flag, layer=i+1)
-            cls_preds.append(cls_pred)
-            sem_preds.append(sem_pred)
-            pred_scores.append(pred_score)
-            pred_masks.append(pred_mask)
-            pred_bboxes.append(pred_bbox)
+
+            cls_preds.append(torch.stack(cls_pred) if cls_pred else cls_pred)
+            sem_preds.append(torch.stack(sem_pred) if sem_pred else sem_pred)
+            pred_scores.append(torch.stack(pred_score) if pred_score else pred_score)
+            pred_masks.append(torch.stack(pred_mask) if pred_mask else pred_mask)
+            pred_bboxes.append(torch.stack(pred_bbox) if pred_bbox else pred_bbox)
 
 
 

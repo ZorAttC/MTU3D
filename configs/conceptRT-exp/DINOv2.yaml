@@ -26,10 +26,10 @@ data:
   train_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_train_200.txt'
   val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_2.txt'
   # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
-  train: [ 'EmbodiedScanInstSegScanNet']
+  train: [ 'EmbodiedSAMInstSegScanNet']
 
-  val: ['EmbodiedScanInstSegScanNet']
-  test: ['EmbodiedScanInstSegScanNet']
+  val: ['EmbodiedSAMInstSegScanNet']
+  test: ['EmbodiedSAMInstSegScanNet']
 
   load_all_dataset_once: False
 
@@ -57,7 +57,7 @@ data:
     load_frame_interval: 10
     val_load_scan_max_num: 10
   
-  EmbodiedScanInstSegScanNet:
+  EmbodiedSAMInstSegScanNet:
     load_frame_interval: 1
     val_load_scan_max_num: 10
 
@@ -100,7 +100,7 @@ eval:
   save: True
   ignore_label: ${data.instseg_options.ignore_label}
   filter_out_classes: [0, 2, 35]
-  compute_loss_eval: False
+  compute_loss_eval: True
 
 model:
   name: EmbodiedCRTInstSegModel

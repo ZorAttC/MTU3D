@@ -98,14 +98,14 @@ class EmbodiedMatcher(nn.Module):
             masks = targets[bid]["masks"] # [num_gt, N]
             query_gt_mask = targets[bid]["query_gt_mask"] # [num_queries, num_gt]
             # load pred
-            pred_masks = outputs[bid]["pred_masks"] # [N, num_queries]
+            pred_masks = outputs[bid]["pred_masks"] # [num_queries,N]
             pred_scores = outputs[bid]["pred_scores"].softmax(-1) # [num_queries, 2]
             # compute cost score
             cost_score = -pred_scores[:, scores] * self.cost_score # [num_queries, num_gt]
             # compute cost mask
-            cost_mask = batch_sigmoid_ce_loss_jit(pred_masks.T, masks.float()) * self.cost_mask   # [num_queries, num_gt] 
+            cost_mask = batch_sigmoid_ce_loss_jit(pred_masks, masks.float()) * self.cost_mask   # [num_queries, num_gt] 
             # compute cost dice
-            cost_dice = batch_dice_loss_jit(pred_masks.T, masks.float()) * self.cost_dice # [num_queries, num_gt]
+            cost_dice = batch_dice_loss_jit(pred_masks, masks.float()) * self.cost_dice # [num_queries, num_gt]
             # compute final cost
             C = cost_score + cost_mask + cost_dice # [num_queries, num_gt]
             C = torch.where(query_gt_mask.bool(), C, 1e8)

@@ -24,7 +24,7 @@ logger:
 # dataset details
 data:
   train_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_train_200.txt'
-  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_20.txt'
+  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_2.txt'
   # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
   train: [ 'EmbodiedScanInstSegScanNet']
 
@@ -94,7 +94,7 @@ solver:
       warmup_steps: 100
 
 eval:
-  name: EmbodiedScanInstSegEvalBoxMerge
+  name: EmbodiedSAMInstSegEvalBoxMerge
   dataset_name: ScanNet
   pass_kwargs: True
   save: True

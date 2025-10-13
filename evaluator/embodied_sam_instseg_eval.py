@@ -27,7 +27,7 @@ from data.datasets.hm3d_label_convert import convert_gpt4
 from data.datasets.constant import CLASS_LABELS_200
 
 @EVALUATOR_REGISTRY.register()
-class EmbodiedScanInstSegEvalEmpty(BaseEvaluator):
+class EmbodiedSAMInstSegEvalEmpty(BaseEvaluator):
     def __init__(self, cfg, accelerator, **kwargs):
         # config
         self.config = cfg
@@ -70,7 +70,7 @@ class EmbodiedScanInstSegEvalEmpty(BaseEvaluator):
         return True, {"target_metric": 0}
 
 @EVALUATOR_REGISTRY.register()
-class EmbodiedScanInstSegEvalGTMerge(BaseEvaluator):
+class EmbodiedSAMInstSegEvalGTMerge(BaseEvaluator):
     def __init__(self, cfg, accelerator, **kwargs):
         # config
         self.config = cfg
@@ -223,7 +223,7 @@ class EmbodiedScanInstSegEvalGTMerge(BaseEvaluator):
 
 
 @EVALUATOR_REGISTRY.register()
-class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
+class EmbodiedSAMInstSegEvalBoxMerge(BaseEvaluator):
     def __init__(self, cfg, accelerator, **kwargs):
         # config
         self.config = cfg
@@ -352,7 +352,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         for bid in range(len(pred_masks)):
             # get all stuff
             # import pdb; pdb.set_trace()
-            masks = pred_masks[bid].detach().cpu()[voxel2segment[bid].cpu()][:, query_pad_masks[bid].cpu()]
+            masks = pred_masks[bid].detach().cpu().T[:, query_pad_masks[bid].cpu()]# (q , 20000)
             logits = pred_logits[bid].detach().cpu()[query_pad_masks[bid].cpu()] # (q, 201)
             boxes = pred_boxes[bid].detach().cpu()[query_pad_masks[bid].cpu()] # (q, 6)
             scores = softmax(pred_scores[bid].detach().cpu()[query_pad_masks[bid].cpu()], dim=1)[:, 1] # (q)
@@ -455,7 +455,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
         return is_best, eval_results
 
 @EVALUATOR_REGISTRY.register()
-class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
+class EmbodiedSAMInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
     def __init__(self, cfg, accelerator, **kwargs):
         # config
         self.config = cfg
@@ -537,7 +537,6 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
         voxel2segment = data_dict['voxel2segment']
         segment_to_full_maps = data_dict['segment_to_full_maps']
         raw_coordinates = data_dict['raw_coordinates']
-        # import pudb; pudb.set_trace()
 
         
 
@@ -586,7 +585,7 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
                 'open_vocab_feats': embeds,
             }]
             self.representation_manger.merge(predict_dict_list)
-            
+
         # update representation
         self.total_count += metrics["total_count"]
 
@@ -629,7 +628,7 @@ class EmbodiedScanInstSegEvalBoxMergeOpenVocab(BaseEvaluator):
         return is_best, eval_results
 
 @EVALUATOR_REGISTRY.register()
-class EmbodiedScanInstSegEvalGTMergeSaveFeat(BaseEvaluator):
+class EmbodiedSAMInstSegEvalGTMergeSaveFeat(BaseEvaluator):
     def __init__(self, cfg, accelerator, **kwargs):
         # config
         self.config = cfg

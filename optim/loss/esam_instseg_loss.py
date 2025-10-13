@@ -154,6 +154,7 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         self.score_weight = loss_cfg.get('score_weight', [0.1, 1.0])
     
     def get_loss_one_layer(self, outputs, targets, layer_num=-1):
+        
         # match
         indices = self.matcher(outputs, targets)
         # prepase

@@ -390,7 +390,7 @@ class EmbodiedCRTInstSegModel(BaseModel):
         # task head
         for head in self.heads:
             if head == 'mask':
-                data_dict['predictions_score'] = [predictions_score[-1]]
+                data_dict['predictions_score'] = [pred_ins_cls[-1]]
                 data_dict['predictions_class'] = [predictions_class[-1]]
                 data_dict['predictions_mask'] = [predictions_mask[-1]]
                 data_dict['predictions_box'] = [predictions_box[-1]]
@@ -400,7 +400,7 @@ class EmbodiedCRTInstSegModel(BaseModel):
                 data_dict['openvocab_query_feat'] = openvocab_query_feat
             else:
                 raise NotImplementedError(f"Unknow head type: {head}")
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         return data_dict
 
     def get_opt_params(self):

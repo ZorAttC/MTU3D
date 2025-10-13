@@ -290,7 +290,7 @@ class RepresentationManager:
         # parameter for single query activation
         self.topk_single_frame_object = 15
         self.filter_out_object_min_points = 100
-        self.min_object_score = 0.4
+        self.min_object_score = 0.01
         self.kernel = 'linear'
         # parameter for query merge
         self.match_cost_min = 0.1

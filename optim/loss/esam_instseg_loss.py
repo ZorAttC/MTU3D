@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from optim.criterion.matcher import EmbodiedMatcher, EmbodiedRecurrentMatcher
-from optim.criterion.mixed_criterion import MixedCriterion
+from optim.criterion.merge_criterion import ScanNetMergeCriterion_Fast
 from optim.loss.loss import LOSS_REGISTRY
 
 from modules.third_party.mask3d.matcher import HungarianMatcher

@@ -73,7 +73,7 @@ dataloader:
   prefetch_factor: 2
   
 task: InstSeg
-data_wrapper: EmbodiedScanInstSegDatasetWrapper
+data_wrapper: EmbodiedSAMInstSegMVDatasetWrapper
 
 # Training details
 trainer: EmbodiedStage1Trainer

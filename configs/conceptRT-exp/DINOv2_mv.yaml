@@ -1,0 +1,189 @@
+# Experiment general info
+name: "CONCEPT-RT"
+base_dir: "outputs"
+exp_dir: ""
+note: ""
+naming_keywords: ["note", "time"]
+
+rng_seed: 42
+num_gpu: 1
+mode: "train"
+
+resume: False
+pretrain_ckpt_path: ''
+
+debug:
+  flag: False
+  debug_size: 10
+
+logger:
+  name: wandb
+  entity: cyh200206
+  autoname: True
+
+# dataset details
+data:
+  train_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_train_200.txt'
+  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_2.txt'
+  # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
+  train: [ 'EmbodiedSAMInstSegScanNet']
+
+  val: ['EmbodiedSAMInstSegScanNet']
+  test: ['EmbodiedSAMInstSegScanNet']
+
+  load_all_dataset_once: False
+
+  load_scan_options:
+    cache_size: 750
+    load_pc_info: True
+    load_segment_info: True
+    load_image_segment_feat: True
+    load_global_pc: True
+
+  
+  instseg_options:
+    num_labels: 200
+    ignore_label: -100
+    filter_out_classes: [0, 2, 35] # filter out wall, floor, ceiling
+    voxel_size: 0.02
+    use_open_vocabulary: True
+    num_queries: 120
+    query_sample_strategy: 'random_segment'
+    image_augmentations_path: configs/instseg/augmentation/albumentations_aug.yaml
+    volume_augmentations_path: configs/instseg/augmentation/volumentations_aug.yaml
+    compute_local_box: True
+  
+  EmbodiedScanInstSegHM3D:
+    load_frame_interval: 10
+    val_load_scan_max_num: 10
+  
+  EmbodiedSAMInstSegScanNet:
+    load_frame_interval: 1
+    val_load_scan_max_num: 10
+
+  scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv2_ViTL
+
+# dataloader details
+dataloader:
+  # This is a per-gpu batchsize
+  batchsize: 16
+  batchsize_eval: 1
+  num_workers: 1
+  prefetch_factor: 2
+  
+task: InstSeg
+data_wrapper: EmbodiedScanInstSegDatasetWrapper
+
+# Training details
+trainer: EmbodiedStage1Trainer
+
+solver:
+  gradient_accumulation_steps: 1
+  lr: 1e-4
+  grad_norm: 80
+  epochs: 60
+  epochs_per_eval: 10
+  optim:
+    name: AdamW
+    args:
+      betas: [0.9, 0.98]
+  sched:
+    name: warmup_cosine
+    args:
+      warmup_steps: 100
+
+eval:
+  name: EmbodiedSAMInstSegEvalBoxMerge
+  dataset_name: ScanNet
+  pass_kwargs: True
+  save: True
+  ignore_label: ${data.instseg_options.ignore_label}
+  filter_out_classes: [0, 2, 35]
+  compute_loss_eval: True
+
+model:
+  name: EmbodiedCRTInstSegModel
+  memories: [voxel, mv]
+  hidden_size: 768
+  init_query_by_feat: True
+  add_geometry_to_segment: True
+  obj_loc:
+    spatial_dim: 5
+    dim_loc: 3
+    pairwise_rel_type: "center"
+
+  
+  pts_encoder:
+    name: PCDESAMSegLevelEncoder
+    args:
+      voxel_memory_kwargs:
+          in_channels: [32, 64, 128, 256]
+          queue: -1
+          vmp_layer: [0,1,2,3]
+      backbone_kwargs:
+        config:
+          dialations: [ 1, 1, 1, 1 ]
+          conv1_kernel_size: 5
+          bn_momentum: 0.02
+        in_channels: 3
+        out_channels: 200
+        out_fpn: true
+      freeze_backbone: False # train only the projection layer
+      hlevels: [0,1,2,3]
+      hidden_size: ${model.hidden_size}
+      dropout: 0.1
+
+  mv_encoder:
+    name: ObjectEncoder
+    args:
+      input_feat_size : 1024 #CLIP:1024 RADIO:1536 DINOv3-convnext:1024 DINOv2-vitb:768
+      hidden_size: ${model.hidden_size}
+      use_projection: True
+      use_cls_head: False
+      dropout: 0.1
+
+  unified_encoder:
+    name: EmbodiedSAMDecoder
+    args:
+      hidden_size: ${model.hidden_size}
+      num_attention_heads: 12
+      num_layers: 4
+      spatial_selfattn: True
+      memories: ${model.memories}
+      structure: "parallel"
+      num_blocks: 1 
+      num_semantic_classes: 200
+      num_instance_classes: 1
+
+  heads: [mask, openvocab]
+  mask_head:
+    name: "MaskHeadSegLevelWithBox"
+    args:
+      hidden_size: ${model.hidden_size}
+      num_targets: 201
+      memories_for_match: ${model.memories}
+      filter_out_classes: []
+  openvocab_head:
+    name: "OpenVocabHead"
+    args:
+      hidden_dim: ${model.hidden_size}
+      out_dim: 768
+  
+  loss_list: [EmbodiedSAMInstSegLoss]
+  vis_loss_list: []
+
+  EmbodiedSAMInstSegLoss:
+    cost_class: 0.5
+    cost_score: 0.5
+    cost_mask: 1
+    cost_dice: 1
+    cost_box: 1
+    cost_open_vocab: 1
+
+    score_weight: [0.1, 1]
+
+    matcher:
+      cost_score: 0.5
+      cost_mask: 1.
+      cost_dice: 1.

@@ -723,8 +723,8 @@ class EmbodiedSAMDecoder(nn.Module):
                 nn.Linear(hidden_size, hidden_size), nn.ReLU(),
                 nn.Linear(hidden_size, 6))
         self.out_sem = nn.Linear(hidden_size, num_semantic_classes + 1)
-        self.out_score = nn.Sequential(
-                nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, 1))
+        # self.out_score = nn.Sequential(
+        #         nn.Linear(hidden_size, hidden_size), nn.ReLU(), nn.Linear(hidden_size, 1))
 
         self.apply(_init_weights_bert)
         
@@ -760,8 +760,8 @@ class EmbodiedSAMDecoder(nn.Module):
             cls_preds.append(self.out_cls(norm_query))
             if last_flag:
                 sem_preds.append(self.out_sem(norm_query))
-            pred_score = self.out_score(norm_query)
-            pred_scores.append(pred_score)
+            # pred_score = self.out_score(norm_query)
+            # pred_scores.append(pred_score)
            
             reg_final = self.out_reg(norm_query)
             reg_distance = torch.exp(reg_final[:, 3:6])
@@ -798,8 +798,8 @@ class EmbodiedSAMDecoder(nn.Module):
 
         '''
 
-        cls_preds, sem_preds, pred_scores, pred_masks = [], [], [], []
-        object_queries, pred_bboxes = [], []
+        cls_preds, sem_preds, pred_scores, pred_masks ,pred_bboxes = [], [], [], [], []
+
         queries = input_dict['query'][0]
         p_feats = input_dict['pts'][0]
         sp_feats= input_dict['voxel'][0][-1]#last layer of voxel features

@@ -26,6 +26,10 @@ class EmbodiedSAMInstSegMVDatasetWrapper(Dataset):
         return self.dataset[idx]
     
     def collate_fn(self, batch_list):
+        '''
+        每个数据采样n帧
+        将n帧的同一位置的数据进行合并
+        '''
         # batch list [[dict01, dict02], [dict11, dict12, ..], [...]] 
         res_batch_list = []
         for i in range(len(batch_list[0])):

@@ -148,7 +148,7 @@ model:
     args:
       hidden_size: ${model.hidden_size}
       num_attention_heads: 12
-      num_layers: 4
+      num_layers: 3
       spatial_selfattn: True
       memories: ${model.memories}
       structure: "parallel"
@@ -156,7 +156,7 @@ model:
       num_semantic_classes: 200
       num_instance_classes: 1
 
-  heads: [mask, openvocab]
+  heads: [mask, openvocab,merge]
   mask_head:
     name: "MaskHeadSegLevelWithBox"
     args:
@@ -169,6 +169,12 @@ model:
     args:
       hidden_dim: ${model.hidden_size}
       out_dim: 768
+  merge_head:
+    name: "MergeHead"
+    args:
+      in_channels: 768
+      out_channels: 768
+      d_hidden: 1536
   
   loss_list: [EmbodiedSAMInstSegLoss]
   vis_loss_list: []

@@ -18,6 +18,12 @@ class ScanNetMergeCriterion_Fast:
         self.criterion = nn.CrossEntropyLoss()
     
     def tmp_loss_fast(self, feats_t0, ins_mask_t0, feats_t1, ins_mask_t1, tau=0.07):
+        '''
+        args:
+
+            feats_t0: (query数量,C) tensor
+            ins_mask_t0: (实例数量， query 掩码)
+        '''
         n_instances = len(ins_mask_t0)
         if n_instances == 0:
             return torch.tensor(0.0, device=feats_t0.device)

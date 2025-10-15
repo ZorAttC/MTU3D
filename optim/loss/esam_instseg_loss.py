@@ -257,3 +257,84 @@ class EmbodiedSAMInstSegLoss(nn.Module):
             losses[k] *= self.weight_dict[k]
         return [sum(losses.values()), losses]
 
+class EmbodiedSAMInstSegLossMV(EmbodiedSAMInstSegLoss):
+    def forward(self, data_list_dict):
+            batch_list=data_list_dict['batch_list']
+            num_frames=data_list_dict['total_frame_num']
+            losses = {}
+            for data_dict in batch_list: 
+                # meta data
+                bs = data_dict['predictions_mask'][-1].shape[0]
+                # load prediction
+                predictions_class = data_dict['predictions_class'].copy()
+                predictions_mask = data_dict['predictions_mask'].copy()
+                predictions_box = data_dict['predictions_box'].copy()
+                predictions_score = data_dict['predictions_score'].copy()
+                predictions_open_vocab = data_dict['openvocab_query_feat'].clone()
+                query_pad_mask = data_dict['query_pad_masks']
+                seg_pad_masks = data_dict['seg_pad_masks']
+                for l in range(len(predictions_mask)):
+                    predictions_mask[l] = [predictions_mask[l][bid][:, query_pad_mask[bid].bool()][seg_pad_masks[bid].bool(), :] for bid in range(bs)]
+                    predictions_class[l] = [predictions_class[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
+                    predictions_box[l] = [predictions_box[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
+                    predictions_score[l] = [predictions_score[l][bid][query_pad_mask[bid].bool()] for bid in range(bs)]
+                predictions_open_vocab = [predictions_open_vocab[bid][query_pad_mask[bid].bool()] for bid in range(bs)]
+                # load target
+                if self.mask_type == "segment_mask":
+                    segment_labels = data_dict['segment_labels']
+                    segment_masks = data_dict['segment_masks']
+                    instance_boxes = data_dict['instance_boxes']
+                    instance_labels = data_dict['instance_labels']
+                    instance_text_embeds = data_dict['instance_text_embeds']
+                    query_selection_ids = data_dict['query_selection_ids']
+                    instance_scores = [torch.ones(segment_masks[bid].shape[0], dtype=torch.long, device=segment_masks[bid].device) for bid in range(len(segment_masks))]
+                    # build target
+                    targets = [{'masks': segment_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
+                                'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)] 
+                elif self.mask_type == "pts_mask":
+                    segment_labels = data_dict['segment_labels']
+                    segment_masks = data_dict['segment_masks']
+                    instance_pts_masks = data_dict['full_masks']
+                    instance_boxes = data_dict['instance_boxes']
+                    instance_labels = data_dict['instance_labels']
+                    instance_text_embeds = data_dict['instance_text_embeds']
+                    query_selection_ids = data_dict['query_selection_ids']
+                    instance_scores = [torch.ones(segment_masks[bid].shape[0], dtype=torch.long, device=segment_masks[bid].device) for bid in range(len(segment_masks))]
+                    # build target
+                    targets = [{'masks': instance_pts_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
+                                'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)]
+                else:
+                    raise NotImplementedError
+                # compute loss for last layer
+                inputs = [{'pred_masks': predictions_mask[-1][bid], 'pred_classes': predictions_class[-1][bid], 'pred_boxes': predictions_box[-1][bid], 'pred_scores': predictions_score[-1][bid], 'pred_embeds': predictions_open_vocab[bid]} for bid in range(bs)]
+                loss, indices = self.get_loss_one_layer(inputs, targets, -1)
+                data_dict['indices'] = indices
+                for key, value in loss.items():
+                    if key in losses:
+                        losses[key] += value
+                    else:
+                        losses[key] = value
+                # compute loss for all layer
+                for l in range(len(predictions_mask) - 1):
+                    inputs = [{'pred_masks': predictions_mask[l][bid], 'pred_classes': predictions_class[l][bid], 'pred_boxes': predictions_box[l][bid], 'pred_scores': predictions_score[l][bid]} for bid in range(bs)]
+                    loss, _ = self.get_loss_one_layer(inputs, targets, l)
+                    
+                    for key, value in loss.items():
+                        if key in losses:
+                            losses[key] += value
+                        else:
+                            losses[key] = value
+            ## Query contrast
+            if hasattr(self, 'merge_criterion'): # (帧索引,数据批次，data_dict)->(数据批次,帧索引,data_dict)
+            
+                merge_feat_n_frames = [[frame['merge_query_feat'][i] for frame in batch_list]
+                    for i in range(len(batch_list[0]))]
+                ins_masks_query_n_frames = [[frame['ins_masks_query'][i] for frame in batch_list] #这里没改好，需要加入
+                    for i in range(len(batch_list[0]))]
+                loss = self.merge_criterion(merge_feat_n_frames, ins_masks_query_n_frames)
+                losses.update(loss)
+            
+            # multiply weight
+            for k in list(losses.keys()):
+                losses[k] *= self.weight_dict[k]
+            return [sum(losses.values()), losses]

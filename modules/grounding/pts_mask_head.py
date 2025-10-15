@@ -687,13 +687,13 @@ class ScanNetMixQueryDecoder(QueryDecoder):
 @GROUNDING_REGISTRY.register()
 class EmbodiedSAMDecoder(nn.Module):
     def __init__(self, cfg, memories=[], hidden_size=768, num_attention_heads=12, share_layer=False, structure='sequential',num_layers=4,
-                 num_blocks=1, hlevels=[0,1,2,3], spatial_selfattn=False, attn_mask=True,mask_pred_mode=['SP','SP','P','P'], cross_attn_mode=["", "SP", "SP", "SP"],
+                 num_blocks=1, spatial_selfattn=False, attn_mask=True,mask_pred_mode=['SP','SP','P','P'], cross_attn_mode=["", "SP", "SP", "SP"],
                  num_instance_classes=1, num_semantic_classes=200):
         super().__init__()
 
         self.spatial_selfattn = spatial_selfattn
         query_encoder_layer = QueryEncoderLayer(d_model=hidden_size, nhead=num_attention_heads, memories=memories, spatial_selfattn=spatial_selfattn, structure=structure)
-        self.unified_encoder = layer_repeat(query_encoder_layer, len(hlevels), share_layer)
+        self.unified_encoder = layer_repeat(query_encoder_layer, num_layers, share_layer)
         self.num_heads = num_attention_heads
         self.num_blocks = num_blocks
         d_model = 256
@@ -706,8 +706,8 @@ class EmbodiedSAMDecoder(nn.Module):
         self.mask_pred_mode = mask_pred_mode
         self.attn_mask = attn_mask 
        
-        self.input_pts_proj = nn.Sequential(
-                    nn.Linear(3 + in_channels, d_model), nn.LayerNorm(d_model), nn.ReLU())
+        # self.input_pts_proj = nn.Sequential(
+        #             nn.Linear(3 + in_channels, d_model), nn.LayerNorm(d_model), nn.ReLU()) #instance feat
         self.x_pts_mask = nn.Sequential(
                             nn.Linear(3 + in_channels, d_model), nn.ReLU(),
                             nn.Linear(d_model, d_model))
@@ -814,14 +814,16 @@ class EmbodiedSAMDecoder(nn.Module):
         cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
              self._forward_head(queries, mask_feats, mask_pts_feats, last_flag=False, layer=0) #得到各类预测输出一次
         
-       
+        max_sp_len=0
         for i in range(3):#三层
             if self.cross_attn_mode[i+1] == "SP" and self.mask_pred_mode[i] == "SP":
-                # attn_mask: list of (N, N), batch size = B
-                # Stack to (B, N, N)
+                # attn_mask: list of (N, M), batch size = B
+                # Stack to (B, N, M)
                 # import pudb; pudb.set_trace()
                 attn_mask = torch.stack(attn_mask, dim=0)  # (B, N, N)
                 attn_mask = attn_mask.repeat_interleave(self.num_heads, dim=0)
+                max_sp_len = max(max_sp_len, attn_mask.shape[2])
+                print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
               
             elif self.cross_attn_mode[i+1] == "SP" and self.mask_pred_mode[i] == "P":   # current method, change P mask to SP
                 # import pudb; pudb.set_trace()
@@ -829,7 +831,6 @@ class EmbodiedSAMDecoder(nn.Module):
                 sp_ids = point2sp
                 # 将不同尺寸的掩码填充为相同尺寸，然后堆叠
                 # 1. 找到批次中最大的超点数量
-                max_sp_len = attn_mask[0].shape[0]
                 attn_mask_score = [scatter_mean(att.float() * xyz_w.view(1, -1), sp, dim=1)
                      for att, sp, xyz_w in zip(attn_mask, sp_ids, xyz_weights)]
                 attn_mask = [(att > 0.5).bool() for att in attn_mask_score] # > 0.5, not <  #注意力遮罩
@@ -857,6 +858,7 @@ class EmbodiedSAMDecoder(nn.Module):
                
                 # 4. 为多头注意力机制重复张量
                 attn_mask = attn_mask_batched.repeat_interleave(self.num_heads, dim=0)
+                print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
               
 
              

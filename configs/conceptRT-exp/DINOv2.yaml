@@ -24,7 +24,7 @@ logger:
 # dataset details
 data:
   train_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_train_200.txt'
-  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_2.txt'
+  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_20.txt'
   # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
   train: [ 'EmbodiedSAMInstSegScanNet']
 
@@ -67,7 +67,7 @@ data:
 # dataloader details
 dataloader:
   # This is a per-gpu batchsize
-  batchsize: 16
+  batchsize: 2
   batchsize_eval: 1
   num_workers: 1
   prefetch_factor: 2
@@ -144,7 +144,7 @@ model:
     args:
       hidden_size: ${model.hidden_size}
       num_attention_heads: 12
-      num_layers: 4
+      num_layers: 3
       spatial_selfattn: True
       memories: ${model.memories}
       structure: "parallel"
@@ -152,14 +152,7 @@ model:
       num_semantic_classes: 200
       num_instance_classes: 1
 
-  heads: [mask, openvocab]
-  mask_head:
-    name: "MaskHeadSegLevelWithBox"
-    args:
-      hidden_size: ${model.hidden_size}
-      num_targets: 201
-      memories_for_match: ${model.memories}
-      filter_out_classes: []
+  heads: [openvocab]
   openvocab_head:
     name: "OpenVocabHead"
     args:

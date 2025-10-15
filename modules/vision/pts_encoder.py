@@ -31,7 +31,7 @@ class PCDESAMSegLevelEncoder(nn.Module):
         print(f"Backbone parameter count: {num_params / 1e6:.2f}M")
         self.scatter_fn = scatter_mean
         self.sizes = self.backbone.PLANES[-5:]
-        self.hlevels = hlevels + [4] # 4 is for the last level, always used for mask seg features
+        self.hlevels =  [4] # 4 is for the last level, always used for mask seg features
         self.feat_proj_list = nn.ModuleList([
                                     nn.Sequential(
                                         nn.Linear(self.sizes[hlevel], hidden_size), 
@@ -76,14 +76,13 @@ class PCDESAMSegLevelEncoder(nn.Module):
             else:
                 pcds_w = None
         multi_scale_seg_feats = []
-        for hlevel, feat_proj in zip(self.hlevels, self.feat_proj_list):
-            feat = aux[hlevel]
-            feat = self.upsampling(feat, hlevel)
-            assert feat.shape[0] == pcds_features.shape[0]
-            batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(feat.decomposed_features, voxel2segment)]
-            batch_feat = torch.stack(batch_feat)
-            batch_feat = feat_proj(batch_feat)
-            multi_scale_seg_feats.append(batch_feat)
+        feat = aux[4]
+        feat = self.upsampling(feat, 4)
+        assert feat.shape[0] == pcds_features.shape[0]
+        batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(feat.decomposed_features, voxel2segment)]
+        batch_feat = torch.stack(batch_feat)
+        batch_feat = self.feat_proj_list[0](batch_feat)
+        multi_scale_seg_feats.append(batch_feat)
         return multi_scale_seg_feats , pcds_features ,pcds_w
 
 
@@ -162,6 +161,6 @@ class ESAMBackboneMM(nn.Module):
         assert feat.shape[0] == pcds_features.shape[0]
         batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(feat.decomposed_features, voxel2segment)]
         batch_feat = torch.stack(batch_feat)
-        batch_feat = self.feat_proj_list[4](batch_feat)
+        batch_feat = self.feat_proj_list[0](batch_feat)
         multi_scale_seg_feats.append(batch_feat)
         return multi_scale_seg_feats , pcds_features ,pcds_w

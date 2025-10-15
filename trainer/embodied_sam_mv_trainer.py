@@ -15,6 +15,9 @@ class ESAM_MV_Trainer(BaseTrainer):
     def forward(self, data_dict):
         return self.model(data_dict)
 
+    def mv_forward(self, data_dict):
+        return self.model.mv_forward(data_dict)
+
     def backward(self, loss):
         backward_dict = {}
         # Need to be reimplemented when using different sets of optimizer and schedulers
@@ -31,11 +34,24 @@ class ESAM_MV_Trainer(BaseTrainer):
         self.model.train()
         loader = self.data_loaders["train"]
         pbar = tqdm(range(len(loader)), disable=(not self.accelerator.is_main_process), desc=f"[Epoch {epoch + 1}/{self.epochs}]")
-        for i, data_dict in enumerate(loader):
+        for i, data_list_dict in enumerate(loader):
             with self.accelerator.accumulate(self.model):
-                data_dict = self.forward(data_dict)
-                loss, losses = self.loss(data_dict)
+                data_list_dict = self.mv_forward(data_list_dict)
+                loss, losses = self.loss(data_list_dict)
                 backward_dict = self.backward(loss)
+                # 检查未接收梯度的参数
+                if i == 0:  # 只在第一次迭代检查
+                    unused_params = []
+                    for name, param in self.model.named_parameters():
+                        if param.grad is None:
+                            unused_params.append(name)
+                    if unused_params:
+                        print(f"Unused parameters in first iteration: {len(unused_params)}")
+                        # 打印前10个
+                        for name in unused_params[:10]:
+                            print(f"  {name}")
+                        if len(unused_params) > 10:
+                            print(f"  ... and {len(unused_params) - 10} more")
                 # record
                 self.global_step += 1
                 log_dict = {'step': self.global_step}

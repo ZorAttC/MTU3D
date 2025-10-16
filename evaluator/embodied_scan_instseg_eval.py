@@ -985,7 +985,7 @@ def eval_mask_scannet(preds, cfg):
             if label_converter.raw_name_to_scannet_raw_id[inst_to_label[inst_id]] in label_converter.scannet_raw_id_to_scannet200_id and inst_to_label[inst_id] not in ['wall', 'floor', 'ceiling']:
                 gt_mask_list.append(instance_labels == inst_id)
         preds[scan_id]['pred_classes'] = np.ones(len(preds[scan_id]['pred_classes']))
-        import pudb; pudb.set_trace()
+        # import pudb; pudb.set_trace()
         cur_ids = np.zeros(preds[scan_id]['pred_masks'].shape[0])
         for i, mask in enumerate(gt_mask_list):
             cur_ids[mask] = 1 * 1000 + i + 1 # class * 1000 + object

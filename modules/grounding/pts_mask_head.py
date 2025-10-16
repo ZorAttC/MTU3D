@@ -687,7 +687,7 @@ class ScanNetMixQueryDecoder(QueryDecoder):
 @GROUNDING_REGISTRY.register()
 class EmbodiedSAMDecoder(nn.Module):
     def __init__(self, cfg, memories=[], hidden_size=768, num_attention_heads=12, share_layer=False, structure='sequential',num_layers=4,
-                 num_blocks=1, spatial_selfattn=False, attn_mask=True,mask_pred_mode=['SP','SP','P','P'], cross_attn_mode=["", "SP", "SP", "SP"],
+                 num_blocks=1, spatial_selfattn=False, attn_mask=True,mask_pred_mode=['SP','SP','P','P'], cross_attn_mode=[ "", "SP", "SP","SP"],
                  num_instance_classes=1, num_semantic_classes=200):
         super().__init__()
 
@@ -763,7 +763,7 @@ class EmbodiedSAMDecoder(nn.Module):
             # pred_score = self.out_score(norm_query)
             # pred_scores.append(pred_score)
            
-            reg_final = self.out_reg(norm_query)
+            reg_final = self.out_reg(norm_query)#anchor more complicated box head
             reg_distance = torch.exp(reg_final[:, 3:6])
             pred_bbox = torch.cat([reg_final[:, :3], reg_distance], dim=1)
         
@@ -798,7 +798,7 @@ class EmbodiedSAMDecoder(nn.Module):
 
         '''
 
-        cls_preds, sem_preds, pred_scores, pred_masks ,pred_bboxes = [], [], [], [], []
+        cls_preds, sem_preds, pred_scores, pred_masks ,pred_bboxes ,pred_type = [], [], [], [], [], []
 
         queries = input_dict['query'][0]
         p_feats = input_dict['pts'][0]
@@ -813,6 +813,12 @@ class EmbodiedSAMDecoder(nn.Module):
         
         cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
              self._forward_head(queries, mask_feats, mask_pts_feats, last_flag=False, layer=0) #得到各类预测输出一次
+        pred_type.append("SP")
+        cls_preds.append(torch.stack(cls_pred) if cls_pred else cls_pred)
+        sem_preds.append(torch.stack(sem_pred) if sem_pred else sem_pred)
+        pred_scores.append(torch.stack(pred_score) if pred_score else pred_score)
+        pred_masks.append(torch.stack(pred_mask) if pred_mask else pred_mask)
+        pred_bboxes.append(torch.stack(pred_bbox) if pred_bbox else pred_bbox)
         
         max_sp_len=0
         for i in range(3):#三层
@@ -823,7 +829,7 @@ class EmbodiedSAMDecoder(nn.Module):
                 attn_mask = torch.stack(attn_mask, dim=0)  # (B, N, N)
                 attn_mask = attn_mask.repeat_interleave(self.num_heads, dim=0)
                 max_sp_len = max(max_sp_len, attn_mask.shape[2])
-                print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
+                # print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
               
             elif self.cross_attn_mode[i+1] == "SP" and self.mask_pred_mode[i] == "P":   # current method, change P mask to SP
                 # import pudb; pudb.set_trace()
@@ -840,9 +846,7 @@ class EmbodiedSAMDecoder(nn.Module):
                 for j in range(len(attn_mask)):
                     mask = ~(attn_mask_score[j] == attn_mask_score[j].min(dim=1, keepdim=True)[0])
                     attn_mask[j] *= mask
-
-               
-                
+ 
                 # 2. 创建一个填充后的张量列表
                 padded_masks = []
                 for m in attn_mask:
@@ -858,7 +862,7 @@ class EmbodiedSAMDecoder(nn.Module):
                
                 # 4. 为多头注意力机制重复张量
                 attn_mask = attn_mask_batched.repeat_interleave(self.num_heads, dim=0)
-                print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
+                # print("stage i+1,shape of attn_mask", i+1, attn_mask.shape)
               
 
              
@@ -869,6 +873,7 @@ class EmbodiedSAMDecoder(nn.Module):
             cls_pred, sem_pred, pred_score, pred_mask, attn_mask, pred_bbox = \
                  self._forward_head(queries, mask_feats, mask_pts_feats, last_flag, layer=i+1)
 
+            pred_type.append(self.mask_pred_mode[i+1])
             cls_preds.append(torch.stack(cls_pred) if cls_pred else cls_pred)
             sem_preds.append(torch.stack(sem_pred) if sem_pred else sem_pred)
             pred_scores.append(torch.stack(pred_score) if pred_score else pred_score)
@@ -878,4 +883,4 @@ class EmbodiedSAMDecoder(nn.Module):
 
 
 
-        return queries, cls_preds, sem_preds, pred_masks, pred_scores, pred_bboxes
+        return queries, cls_preds, sem_preds, pred_masks, pred_scores, pred_bboxes ,pred_type

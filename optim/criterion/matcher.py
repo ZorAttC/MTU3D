@@ -91,6 +91,7 @@ class EmbodiedMatcher(nn.Module):
 
     @torch.no_grad()
     def forward(self, outputs, targets):
+        self.reset()
         indices = []
         for bid in range(len(targets)):
             # load gt
@@ -115,7 +116,12 @@ class EmbodiedMatcher(nn.Module):
                 topk_C = torch.topk(C, 2, dim=0, sorted=True, largest=False).values[-1:, :] # [1, num_gt]
             ids = torch.argwhere(C < topk_C)
             indices.append([ids[:, 0], ids[:, 1]])
+        
         return indices
+    def reset(self):
+        self.cost_score = 1
+        self.cost_mask = 1
+        self.cost_dice = 1
 
 class EmbodiedRecurrentMatcher(nn.Module):
     """This class computes an assignment between the targets and the predictions of the network

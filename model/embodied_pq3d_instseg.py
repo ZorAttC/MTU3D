@@ -196,20 +196,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
                 raise NotImplementedError(f"Unknow head type: {head}")
        
         return data_dict
-    def params_statistics(self):
-        """
-        统计模型中每个主要部分的参数数量。
-        
-        Args:
-            model: PyTorch模型实例
-        """
-        print("Parameter Statistics:")
-        total_params = 0
-        for name, module in self._modules.items():
-            module_params = sum(p.numel() for p in module.parameters())
-            total_params += module_params
-            print(f"  {name}: {module_params:,} parameters")
-        print(f"  Total: {total_params:,} parameters")
+   
 
     def get_opt_params(self):
         def get_lr(cfg, default_lr):
@@ -235,7 +222,7 @@ class EmbodiedPQ3DInstSegModel(BaseModel):
         print(f"Total parameters: {len(list(self.parameters()))}")
         print(f"Trainable parameters: {len(total_trainable_parameters)}")
         print(f"Optimized parameters: {len(optimized_parameters)}")
-        param
+
         assert len(optimized_parameters) == len(total_trainable_parameters), f"Some parameters are not optimized! Optimized: {len(optimized_parameters)}, Trainable: {len(total_trainable_parameters)}"
         return optimizer_grouped_parameters
 
@@ -275,15 +262,15 @@ class EmbodiedCRTInstSegModel(BaseModel):
             setattr(self, head, build_module_by_name(cfg.model.get(head)))
         # add geometry to segment
         if self.add_geometry_to_segment:
-            self.pts_proj1 = nn.Sequential(
-                nn.Linear(3, hidden_size),
-                nn.LayerNorm(hidden_size),
-                nn.ReLU(),
-                nn.Linear(hidden_size, hidden_size),
-                nn.LayerNorm(hidden_size)
-            )
+            # self.pts_proj1 = nn.Sequential(
+            #     nn.Linear(3, hidden_size),
+            #     nn.LayerNorm(hidden_size),
+            #     nn.ReLU(),
+            #     nn.Linear(hidden_size, hidden_size),
+            #     nn.LayerNorm(hidden_size)
+            # )
             self.feat_proj = nn.Sequential(
-                nn.Linear(hidden_size + 3, hidden_size),
+                nn.Linear(hidden_size + 96+3, hidden_size),
                 nn.LayerNorm(hidden_size),
             )
         
@@ -324,13 +311,13 @@ class EmbodiedCRTInstSegModel(BaseModel):
          
                 feat,pts_feat,pcds_w = self.pts_encoder(x, voxel2segment, max_seg=fts_locs.shape[1],data_dict=data_dict)
                 if self.add_geometry_to_segment:#给segment注入对应点云的位置编码
-                    for bid in range(len(voxel2segment)):
-                        sp_idx = voxel2segment[bid]
-                        all_xyz = data_dict['coordinates'][bid]
-                        norm_xyz, _ = scatter_norm(all_xyz, sp_idx)
-                        all_xyz_segment = scatter(self.pts_proj1(norm_xyz), sp_idx, dim=0, reduce='max', dim_size=fts_locs.shape[1])
-                        for i in range(len(feat)):
-                            feat[i][bid] = feat[i][bid] + all_xyz_segment
+                    # for bid in range(len(voxel2segment)):#这部分放到pts_encoder里算了
+                    #     sp_idx = voxel2segment[bid]
+                    #     all_xyz = data_dict['coordinates'][bid]
+                    #     norm_xyz, _ = scatter_norm(all_xyz, sp_idx)
+                    #     all_xyz_segment = scatter(self.pts_proj1(norm_xyz), sp_idx, dim=0, reduce='max', dim_size=fts_locs.shape[1])
+                    #     for i in range(len(feat)):
+                    #         feat[i][bid] = feat[i][bid] + all_xyz_segment
                     for i in range(len(feat)):        
                         feat[i] = self.feat_proj(torch.cat([feat[i], fts_locs], dim=-1)) 
                 mask = data_dict['seg_pad_masks'].logical_not()
@@ -399,13 +386,14 @@ class EmbodiedCRTInstSegModel(BaseModel):
         
         # unified encoding    
         # import pudb; pudb.set_trace()                       
-        query, pred_ins_cls, predictions_class, predictions_mask, predictions_score, predictions_box = self.unified_encoder(input_dict, pairwise_locs, pcds_w, pts2spidx)
+        query, pred_ins_cls, predictions_class, predictions_mask, predictions_score, predictions_box ,pred_type = self.unified_encoder(input_dict, pairwise_locs, pcds_w, pts2spidx)
         data_dict['query_feat'] = query
-        
-        data_dict['predictions_score'] = [pred_ins_cls[-1]]
-        data_dict['predictions_class'] = [predictions_class[-1]]
-        data_dict['predictions_mask'] = [predictions_mask[-1]]
-        data_dict['predictions_box'] = [predictions_box[-1]]
+
+        data_dict['predictions_type'] = pred_type
+        data_dict['predictions_score'] = pred_ins_cls
+        data_dict['predictions_class'] = predictions_class
+        data_dict['predictions_mask'] = predictions_mask
+        data_dict['predictions_box'] = predictions_box
         # task head
         for head in self.heads:
             
@@ -416,7 +404,20 @@ class EmbodiedCRTInstSegModel(BaseModel):
                 raise NotImplementedError(f"Unknow head type: {head}")
         # import pudb; pudb.set_trace()
         return data_dict
-
+    def params_statistics(self):
+            """
+            统计模型中每个主要部分的参数数量。
+            
+            Args:
+                model: PyTorch模型实例
+            """
+            print("Parameter Statistics:")
+            total_params = 0
+            for name, module in self._modules.items():
+                module_params = sum(p.numel() for p in module.parameters())
+                total_params += module_params
+                print(f"  {name}: {module_params:,} parameters")
+            print(f"  Total: {total_params:,} parameters")
     def get_opt_params(self):
         def get_lr(cfg, default_lr):
             return default_lr if cfg is None or cfg.get("lr") is None else cfg.get("lr")
@@ -441,7 +442,7 @@ class EmbodiedCRTInstSegModel(BaseModel):
         print(f"Total parameters: {len(list(self.parameters()))}")
         print(f"Trainable parameters: {len(total_trainable_parameters)}")
         print(f"Optimized parameters: {len(optimized_parameters)}")
-        
+        self.params_statistics()
         assert len(optimized_parameters) == len(total_trainable_parameters), f"Some parameters are not optimized! Optimized: {len(optimized_parameters)}, Trainable: {len(total_trainable_parameters)}"
         return optimizer_grouped_parameters
 

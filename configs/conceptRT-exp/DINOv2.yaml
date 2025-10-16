@@ -67,7 +67,7 @@ data:
 # dataloader details
 dataloader:
   # This is a per-gpu batchsize
-  batchsize: 2
+  batchsize: 16
   batchsize_eval: 1
   num_workers: 1
   prefetch_factor: 2

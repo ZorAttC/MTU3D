@@ -153,8 +153,9 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         # score weight
         self.score_weight = loss_cfg.get('score_weight', [0.1, 1.0])
     
-    def get_loss_one_layer(self, outputs, targets, layer_num=-1):
+    def get_loss_one_layer(self, outputs, targets, layer_num=-1,target_type="SP"):
         
+      
         # match
         indices = self.matcher(outputs, targets)
         # prepase
@@ -168,28 +169,55 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         loss_open_vocab = []
         losses = {}
         
+        if target_type == "P":
         # compute loss
-        for bid in range(len(outputs)):
-            if indices[bid][0].shape[0] == 0:
-                continue
-            # classification loss
-            loss_ce.append(F.cross_entropy(outputs[bid]['pred_classes'], targets[bid]['query_labels']))
-            # mask loss
-            loss_mask.append(sigmoid_ce_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
-            # dice loss
-            loss_dice.append(dice_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
-            # score loss
-            score_target = outputs[bid]['pred_scores'].new_zeros(outputs[bid]['pred_scores'].shape[0])
-            score_target[indices[bid][0]] = 1.0
-            loss_score.append(F.cross_entropy(outputs[bid]['pred_scores'], score_target.long(), weight=score_target.new_tensor(self.score_weight)))
-            # box loss
-            loss_box.append(iou_loss(outputs[bid]['pred_boxes'][indices[bid][0]], targets[bid]['boxes'][indices[bid][1]])) 
-            # open vocab loss
-            if layer_num == -1:
-                loss_open_vocab.append((1 - torch.nn.CosineSimilarity()
-                    (outputs[bid]['pred_embeds'][indices[bid][0]], targets[bid]['instance_text_embeds'][indices[bid][1]])).mean())
-        # return dict
-        losses['loss_ce' + suffix] = sum(loss_ce) / len(loss_ce) if len(loss_ce) > 0 else 0
+            for bid in range(len(outputs)):
+                if indices[bid][0].shape[0] == 0:
+                    continue
+                 # mask loss
+                loss_mask.append(sigmoid_ce_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+                # dice loss
+                loss_dice.append(dice_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+                # score loss
+                score_target = outputs[bid]['pred_scores'].new_zeros(outputs[bid]['pred_scores'].shape[0])
+                score_target[indices[bid][0]] = 1.0
+                loss_score.append(F.cross_entropy(outputs[bid]['pred_scores'], score_target.long(), weight=score_target.new_tensor(self.score_weight)))
+                # box loss
+                loss_box.append(iou_loss(outputs[bid]['pred_boxes'][indices[bid][0]], targets[bid]['boxes'][indices[bid][1]])) 
+                # open vocab loss
+                if layer_num == -1:
+                     # classification loss
+                    loss_ce.append(F.cross_entropy(outputs[bid]['pred_classes'], targets[bid]['query_labels']))
+              
+                    loss_open_vocab.append((1 - torch.nn.CosineSimilarity()
+                        (outputs[bid]['pred_embeds'][indices[bid][0]], targets[bid]['instance_text_embeds'][indices[bid][1]])).mean())
+        elif target_type == "SP":
+            for bid in range(len(outputs)):
+                # import pudb; pudb.set_trace()
+                if indices[bid][0].shape[0] == 0:
+                    continue
+                   # mask loss
+                loss_mask.append(sigmoid_ce_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+                # dice loss
+                loss_dice.append(dice_loss_jit(outputs[bid]['pred_masks'][indices[bid][0],:], targets[bid]['masks'][indices[bid][1]].float(), targets[bid]['masks'][indices[bid][1]].shape[0]))
+                # score loss
+                score_target = outputs[bid]['pred_scores'].new_zeros(outputs[bid]['pred_scores'].shape[0])
+                score_target[indices[bid][0]] = 1.0
+                loss_score.append(F.cross_entropy(outputs[bid]['pred_scores'], score_target.long(), weight=score_target.new_tensor(self.score_weight)))
+                # box loss
+                loss_box.append(iou_loss(outputs[bid]['pred_boxes'][indices[bid][0]], targets[bid]['boxes'][indices[bid][1]])) 
+                # open vocab loss
+                if layer_num == -1:
+                    loss_open_vocab.append((1 - torch.nn.CosineSimilarity()
+                        (outputs[bid]['pred_embeds'][indices[bid][0]], targets[bid]['instance_text_embeds'][indices[bid][1]])).mean())
+                         # classification loss
+                    loss_ce.append(F.cross_entropy(outputs[bid]['pred_classes'], targets[bid]['query_labels']))
+        
+        else:
+                raise NotImplementedError
+         # return dict
+        if layer_num == -1: 
+             losses['loss_ce' + suffix] = sum(loss_ce) / len(loss_ce) if len(loss_ce) > 0 else 0
         losses['loss_mask' + suffix] = sum(loss_mask) / len(loss_mask) if len(loss_mask) > 0 else 0 
         losses['loss_dice' + suffix] = sum(loss_dice) / len(loss_dice) if len(loss_dice) > 0 else 0
         losses['loss_score' + suffix] = sum(loss_score) / len(loss_score) if len(loss_score) > 0 else 0
@@ -209,14 +237,19 @@ class EmbodiedSAMInstSegLoss(nn.Module):
         predictions_open_vocab = data_dict['openvocab_query_feat'].clone()
         query_pad_mask = data_dict['query_pad_masks']
         seg_pad_masks = data_dict['seg_pad_masks']
+        predictions_type = data_dict['predictions_type']
         for l in range(len(predictions_mask)):
-            predictions_mask[l] = [predictions_mask[l][bid][query_pad_mask[bid].bool(),:] for bid in range(bs)] #(query,pts)
-            predictions_class[l] = [predictions_class[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
+            if predictions_type[l] == 'P':
+                predictions_mask[l] = [predictions_mask[l][bid][query_pad_mask[bid].bool(),:] for bid in range(bs)] #(query,pts)
+            else:
+                predictions_mask[l] = [predictions_mask[l][bid][query_pad_mask[bid].bool(),:][:,seg_pad_masks[bid].bool()] for bid in range(bs)] #(seg,query)
+            if l == len(predictions_type) - 1:
+                predictions_class[l] = [predictions_class[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
             predictions_box[l] = [predictions_box[l][bid][query_pad_mask[bid].bool(), :] for bid in range(bs)]
             predictions_score[l] = [predictions_score[l][bid][query_pad_mask[bid].bool()] for bid in range(bs)]
         predictions_open_vocab = [predictions_open_vocab[bid][query_pad_mask[bid].bool()] for bid in range(bs)]
         # load target
-        if self.mask_type == "segment_mask":
+        if 'SP' in predictions_type:
             segment_labels = data_dict['segment_labels']
             segment_masks = data_dict['segment_masks']
             instance_boxes = data_dict['instance_boxes']
@@ -225,9 +258,9 @@ class EmbodiedSAMInstSegLoss(nn.Module):
             query_selection_ids = data_dict['query_selection_ids']
             instance_scores = [torch.ones(segment_masks[bid].shape[0], dtype=torch.long, device=segment_masks[bid].device) for bid in range(len(segment_masks))]
             # build target
-            targets = [{'masks': segment_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
-                        'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)] 
-        elif self.mask_type == "pts_mask":
+            sp_targets = [{'masks': segment_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
+                        'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)]
+        if 'P' in predictions_type:
             segment_labels = data_dict['segment_labels']
             segment_masks = data_dict['segment_masks']
             instance_pts_masks = data_dict['full_masks']
@@ -237,20 +270,27 @@ class EmbodiedSAMInstSegLoss(nn.Module):
             query_selection_ids = data_dict['query_selection_ids']
             instance_scores = [torch.ones(segment_masks[bid].shape[0], dtype=torch.long, device=segment_masks[bid].device) for bid in range(len(segment_masks))]
             # build target
-            targets = [{'masks': instance_pts_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
+            p_targets = [{'masks': instance_pts_masks[bid], 'labels': instance_labels[bid], 'scores': instance_scores[bid], 'boxes': instance_boxes[bid], 'instance_ids': data_dict['instance_ids_ori'][bid], 'instance_text_embeds': instance_text_embeds[bid],
                         'query_gt_mask': segment_masks[bid].T[query_selection_ids[bid], :], 'query_labels': segment_labels[bid][query_selection_ids[bid]]} for bid in range(bs)]
-        else:
-            raise NotImplementedError
-        # compute loss for last layer
+       
+        # compute loss for last layer (always P)
         losses = {}
         inputs = [{'pred_masks': predictions_mask[-1][bid], 'pred_classes': predictions_class[-1][bid], 'pred_boxes': predictions_box[-1][bid], 'pred_scores': predictions_score[-1][bid], 'pred_embeds': predictions_open_vocab[bid]} for bid in range(bs)]
-        loss, indices = self.get_loss_one_layer(inputs, targets, -1)
+        # print(f"get_loss_one_layer:{-1},target_type:P")
+        loss, indices = self.get_loss_one_layer(inputs, p_targets, -1,target_type="P")
         data_dict['indices'] = indices
         losses.update(loss)
         # compute loss for all layer
         for l in range(len(predictions_mask) - 1):
-            inputs = [{'pred_masks': predictions_mask[l][bid], 'pred_classes': predictions_class[l][bid], 'pred_boxes': predictions_box[l][bid], 'pred_scores': predictions_score[l][bid]} for bid in range(bs)]
-            loss, _ = self.get_loss_one_layer(inputs, targets, l)
+            inputs = [{'pred_masks': predictions_mask[l][bid], 'pred_classes': predictions_class[-1][bid], 'pred_boxes': predictions_box[l][bid], 'pred_scores': predictions_score[l][bid]} for bid in range(bs)]
+            if predictions_type[l] == 'SP':
+                targets = sp_targets
+            elif predictions_type[l] == 'P':
+                targets = p_targets
+            else:
+                raise NotImplementedError
+            # print(f"get_loss_one_layer:{l},target_type:{predictions_type[l]}")
+            loss, _ = self.get_loss_one_layer(inputs, targets, l,target_type=predictions_type[l])
             losses.update(loss)
         # multiply weight
         for k in list(losses.keys()):

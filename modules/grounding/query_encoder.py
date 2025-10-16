@@ -279,11 +279,9 @@ class QueryEncoderLayer(nn.Module):
                 feat, mask, pos = input_dict[memory] 
                 
                 # 使用局部变量
-                current_attn_mask = attn_mask
-                current_memory_key_padding_mask = None
-
+                current_attn_mask = attn_mask[0]
                 if current_attn_mask is not None:
-                    current_memory_key_padding_mask = mask
+                    current_memory_key_padding_mask = None
                 elif mask.ndim == 2:
                     current_memory_key_padding_mask = mask
                     current_attn_mask = None

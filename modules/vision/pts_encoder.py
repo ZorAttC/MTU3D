@@ -72,7 +72,13 @@ class PCDESAMSegLevelEncoder(nn.Module):
                 pts_feat_batched=torch.stack(pts_feat_list,dim=0).detach()
                 pts_pos_batched=torch.from_numpy(np.stack(coord_list,axis=0)).cuda()
                 pts2spidx_batched=torch.stack(pts2spidx,dim=0).detach()
-                _, pcds_w = self.geo_aware_pooling.forward(pts_feat_batched, pts2spidx_batched, pts_pos_batched)
+                sp_feat, pcds_w = self.geo_aware_pooling.forward(pts_feat_batched, pts2spidx_batched, pts_pos_batched)
+                sp_feat_padded=[]
+                for sp in sp_feat:
+                   pad_size=max_seg-sp.shape[0]
+                   padded=F.pad(sp,(0,0,0,pad_size),mode='constant',value=0)
+                   sp_feat_padded.append(padded)
+                sp_feat_padded=torch.stack(sp_feat_padded,dim=0)                       
             else:
                 pcds_w = None
         multi_scale_seg_feats = []
@@ -82,7 +88,14 @@ class PCDESAMSegLevelEncoder(nn.Module):
         batch_feat = [self.scatter_fn(f, p2s, dim=0, dim_size=max_seg) for f, p2s in zip(feat.decomposed_features, voxel2segment)]
         batch_feat = torch.stack(batch_feat)
         batch_feat = self.feat_proj_list[0](batch_feat)
+        batch_feat = torch.cat([batch_feat, sp_feat_padded], dim=-1)#768+96=864
+        # import pudb; pudb.set_trace()
+
         multi_scale_seg_feats.append(batch_feat)
+
+                           
+       
+
         return multi_scale_seg_feats , pcds_features ,pcds_w
 
 

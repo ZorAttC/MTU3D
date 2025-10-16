@@ -79,6 +79,7 @@ class EmbodiedStage1Trainer(BaseTrainer):
             data_dict = self.forward(data_dict)
             if self.compute_loss_eval:
                 loss, losses = self.loss(data_dict)
+                print(f"Test step {i}: loss {losses}")
             self.evaluator.update(data_dict)
             pbar.update(1)
         is_best, results = self.evaluator.record()

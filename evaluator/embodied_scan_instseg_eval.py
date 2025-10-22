@@ -382,6 +382,7 @@ class EmbodiedScanInstSegEvalBoxMerge(BaseEvaluator):
             scores = scores.numpy()
             feats = feats.numpy()
             embeds = embeds.numpy()
+            import pudb; pudb.set_trace()
             # merge
             print("raw_coordinates:", raw_coordinates[bid].shape)
             print("masks:", masks.shape)

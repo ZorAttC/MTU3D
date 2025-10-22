@@ -481,15 +481,9 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
             setattr(self, head, build_module_by_name(cfg.model.get(head)))
         # add geometry to segment
         if self.add_geometry_to_segment:
-            self.pts_proj1 = nn.Sequential(
-                nn.Linear(3, hidden_size),
-                nn.LayerNorm(hidden_size),
-                nn.ReLU(),
-                nn.Linear(hidden_size, hidden_size),
-                nn.LayerNorm(hidden_size)
-            )
+            # 保持与 EmbodiedCRTInstSegModel 一致的维度配置
             self.feat_proj = nn.Sequential(
-                nn.Linear(hidden_size + 3, hidden_size),
+                nn.Linear(hidden_size + 96 + 3, hidden_size),
                 nn.LayerNorm(hidden_size),
             )
         
@@ -500,10 +494,13 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
             })
          
     def mv_forward(self, data_list_dict):
-        num_frames=data_list_dict['total_frame_num']
-        batch_list=data_list_dict['batch_list']
+        num_frames = data_list_dict['total_frame_num']
+        batch_list = data_list_dict['batch_list']
+        
+        # 用于累积所有帧的结果
+        all_results = []
 
-        for data_dict in batch_list: 
+        for frame_idx, data_dict in enumerate(batch_list): 
             input_dict = {}
             # build query
             mask = data_dict['query_pad_masks'].logical_not()
@@ -532,15 +529,9 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
                     x = ME.SparseTensor(coordinates=voxel_coordinates, features=voxel_features[:, :-3], device=voxel_features.device)
                     voxel2segment = data_dict['voxel2segment']
             
-                    feat,pts_feat,pcds_w = self.pts_encoder(x, voxel2segment, max_seg=fts_locs.shape[1],data_dict=data_dict)
+                    feat, pts_feat, pcds_w = self.pts_encoder(x, voxel2segment, max_seg=fts_locs.shape[1], data_dict=data_dict)
                     if self.add_geometry_to_segment:#给segment注入对应点云的位置编码
-                        for bid in range(len(voxel2segment)):
-                            sp_idx = voxel2segment[bid]
-                            all_xyz = data_dict['coordinates'][bid]
-                            norm_xyz, _ = scatter_norm(all_xyz, sp_idx)
-                            all_xyz_segment = scatter(self.pts_proj1(norm_xyz), sp_idx, dim=0, reduce='max', dim_size=fts_locs.shape[1])
-                            for i in range(len(feat)):
-                                feat[i][bid] = feat[i][bid] + all_xyz_segment
+                        # 注意：这里保持与父类一致，不使用 pts_proj1
                         for i in range(len(feat)):        
                             feat[i] = self.feat_proj(torch.cat([feat[i], fts_locs], dim=-1)) 
                     mask = data_dict['seg_pad_masks'].logical_not()
@@ -551,14 +542,14 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
                     # import pudb; pudb.set_trace()  
                     pts_mask = data_dict['voxel_pad_masks'].logical_not() #(20000,)
                     voxel_to_full_maps = data_dict['voxel_to_full_maps']
-                    voxel_feat=pts_feat.decomposed_features
+                    voxel_feat = pts_feat.decomposed_features
                     
-                    pts_feat_list=[v_feat[idx] for v_feat,idx in zip(voxel_feat,voxel_to_full_maps)]
+                    pts_feat_list = [v_feat[idx] for v_feat, idx in zip(voxel_feat, voxel_to_full_maps)]
                     pts2spidx = [v2s[v2p] for v2s, v2p in zip(data_dict['voxel2segment'], voxel_to_full_maps)]
                 
-                    pts_feat_batched=torch.stack(pts_feat_list,dim=0).detach().cuda()
+                    pts_feat_batched = torch.stack(pts_feat_list, dim=0).detach().cuda()
 
-                    pts_pos_batched=torch.from_numpy(np.stack([p[:,:3] for p in data_dict['raw_coordinates']],axis=0)).cuda()
+                    pts_pos_batched = torch.from_numpy(np.stack([p[:,:3] for p in data_dict['raw_coordinates']], axis=0)).cuda()
 
                     data_dict['pts_feat'] = {'feat': pts_feat_batched, 'mask': pts_mask.detach().cpu()}
         
@@ -609,17 +600,20 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
             
             # unified encoding    
             # import pudb; pudb.set_trace()                       
-            query, pred_ins_cls, predictions_class, predictions_mask, predictions_score, predictions_box = self.unified_encoder(input_dict, pairwise_locs, pcds_w, pts2spidx)
+            # 修复：接收 7 个返回值，与 EmbodiedCRTInstSegModel 保持一致
+            query, pred_ins_cls, predictions_class, predictions_mask, predictions_score, predictions_box, pred_type = self.unified_encoder(input_dict, pairwise_locs, pcds_w, pts2spidx)
             data_dict['query_feat'] = query
             
+            # 添加 predictions_type
+            data_dict['predictions_type'] = pred_type
 
             # task head
             for head in self.heads:
                 if head == 'mask':
-                    data_dict['predictions_score'] = [pred_ins_cls[-1]]
-                    data_dict['predictions_class'] = [predictions_class[-1]]
-                    data_dict['predictions_mask'] = [predictions_mask[-1]]
-                    data_dict['predictions_box'] = [predictions_box[-1]]
+                    data_dict['predictions_score'] = [pred_ins_cls[-1] if isinstance(pred_ins_cls, list) else pred_ins_cls]
+                    data_dict['predictions_class'] = [predictions_class[-1] if isinstance(predictions_class, list) else predictions_class]
+                    data_dict['predictions_mask'] = [predictions_mask[-1] if isinstance(predictions_mask, list) else predictions_mask]
+                    data_dict['predictions_box'] = [predictions_box[-1] if isinstance(predictions_box, list) else predictions_box]
                     continue
                 elif head == 'openvocab':
                     openvocab_query_feat = getattr(self, 'openvocab_head')(query)
@@ -630,9 +624,15 @@ class EmbodiedCRTInstSegModelMV(EmbodiedCRTInstSegModel):
                 else:
                     raise NotImplementedError(f"Unknow head type: {head}")
             
+            # 保存当前帧的结果
+            all_results.append(data_dict)
         
+        # 返回所有帧的结果，或者根据需求返回最后一帧
+        # 如果需要返回所有帧，可以返回 all_results
+        # 如果只需要最后一帧，保持原样
+        data_list_dict['processed_batch_list'] = all_results
         # import pudb; pudb.set_trace()
-        return data_dict
+        return data_list_dict
 
     def get_opt_params(self):
         def get_lr(cfg, default_lr):

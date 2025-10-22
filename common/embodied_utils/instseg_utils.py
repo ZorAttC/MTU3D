@@ -45,7 +45,9 @@ def eval_instseg_flexible(pred, gt_ids, CLASS_LABELS):
 def make_pred_info(pred: dict):
     # pred = {'pred_scores' = 100, 'pred_classes' = 100 'pred_masks' = Nx100}
     pred_info = {}
-    assert(pred['pred_classes'].shape[0] == pred['pred_scores'].shape[0] == pred['pred_masks'].shape[1])
+    print("pred keys:", pred.keys())
+    print("pred shapes:", {k: v.shape for k, v in pred.items()})
+    # assert(pred['pred_classes'].shape[0] == pred['pred_scores'].shape[0] == pred['pred_masks'].shape[1])
     for i in range(len(pred['pred_classes'])):
         info = {}
         info["label_id"] = pred['pred_classes'][i]

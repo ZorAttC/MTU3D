@@ -367,6 +367,8 @@ class EmbodiedSAMInstSegEvalBoxMerge(BaseEvaluator):
             scores = scores[valid_query_mask]
             embeds = embeds[valid_query_mask]
             feats = feats[valid_query_mask]
+
+            import pudb; pudb.set_trace()
             if masks.shape[1] == 0:
                 continue
             # remove 200 classes
@@ -382,7 +384,6 @@ class EmbodiedSAMInstSegEvalBoxMerge(BaseEvaluator):
             scores = scores.numpy()
             feats = feats.numpy()
             embeds = embeds.numpy()
-            # merge
             print("raw_coordinates:", raw_coordinates[bid].shape)
             print("masks:", masks.shape)
             print("classes:", classes.shape)
@@ -890,7 +891,8 @@ def eval_mask_hm3d(preds, cfg):
             if inst_to_label[inst_id] in convert_gpt4.keys() and  label_converter.raw_name_to_scannet_raw_id[convert_gpt4[inst_to_label[inst_id]]] in label_converter.scannet_raw_id_to_scannet200_id and convert_gpt4[inst_to_label[inst_id]] not in ['wall', 'floor', 'ceiling']:
                 gt_mask_list.append(instance_labels == inst_id)
         preds[scan_id]['pred_classes'] = np.ones(len(preds[scan_id]['pred_classes']))
-        cur_ids = np.zeros(preds[scan_id]['pred_masks'].shape[0])
+        # 修复：cur_ids 应该基于 GT 点云的点数，而不是预测掩码的形状
+        cur_ids = np.zeros(instance_labels.shape[0])
         for i, mask in enumerate(gt_mask_list):
             cur_ids[mask] = 1 * 1000 + i + 1 # class * 1000 + object
         gt_ids[scan_id] = cur_ids
@@ -984,8 +986,10 @@ def eval_mask_scannet(preds, cfg):
             if label_converter.raw_name_to_scannet_raw_id[inst_to_label[inst_id]] in label_converter.scannet_raw_id_to_scannet200_id and inst_to_label[inst_id] not in ['wall', 'floor', 'ceiling']:
                 gt_mask_list.append(instance_labels == inst_id)
         preds[scan_id]['pred_classes'] = np.ones(len(preds[scan_id]['pred_classes']))
-        cur_ids = np.zeros(preds[scan_id]['pred_masks'].shape[0])
+        # 修复：cur_ids 应该基于 GT 点云的点数，而不是预测掩码的形状
+        cur_ids = np.zeros(instance_labels.shape[0])
         for i, mask in enumerate(gt_mask_list):
+            print("instance id:", i, "num points:", mask.sum())
             cur_ids[mask] = 1 * 1000 + i + 1 # class * 1000 + object
         gt_ids[scan_id] = cur_ids
     # eval
@@ -1023,7 +1027,8 @@ def eval_mask_open_vocab_scannet(preds, cfg):
             if label_converter.raw_name_to_scannet_raw_id[inst_to_label[inst_id]] in label_converter.scannet_raw_id_to_scannet200_id and inst_to_label[inst_id] not in ['wall', 'floor', 'ceiling']:
                 scannet200_label = label_converter.scannet_raw_id_to_scannet200_id[label_converter.raw_name_to_scannet_raw_id[inst_to_label[inst_id]]]
                 gt_mask_dict[scannet200_label].append(instance_labels == inst_id)
-        cur_ids = np.zeros(preds[scan_id]['pred_masks'].shape[0])
+        # 修复：cur_ids 应该基于 GT 点云的点数，而不是预测掩码的形状
+        cur_ids = np.zeros(instance_labels.shape[0])
         for i, mask_list in gt_mask_dict.items():
             for j, mask in enumerate(mask_list):
                 cur_ids[mask] = (i + 1) * 1000 + j + 1  # start from 1
@@ -1075,7 +1080,8 @@ def eval_mask_open_vocab_hm3d(preds, cfg):
             if inst_to_label[inst_id] in convert_gpt4.keys() and  label_converter.raw_name_to_scannet_raw_id[convert_gpt4[inst_to_label[inst_id]]] in label_converter.scannet_raw_id_to_scannet200_id and convert_gpt4[inst_to_label[inst_id]] not in ['wall', 'floor', 'ceiling']:
                 scannet200_label = label_converter.scannet_raw_id_to_scannet200_id[label_converter.raw_name_to_scannet_raw_id[convert_gpt4[inst_to_label[inst_id]]]]
                 gt_mask_dict[scannet200_label].append(instance_labels == inst_id)
-        cur_ids = np.zeros(preds[scan_id]['pred_masks'].shape[0])
+        # 修复：cur_ids 应该基于 GT 点云的点数，而不是预测掩码的形状
+        cur_ids = np.zeros(instance_labels.shape[0])
         for i, mask_list in gt_mask_dict.items():
             for j, mask in enumerate(mask_list):
                 cur_ids[mask] = (i + 1) * 1000 + j + 1  # start from 1

@@ -1,7 +1,7 @@
 # Experiment general info
-name: "Embodied-PQ3D"
+name: "CONCEPT-RT"
 base_dir: "outputs"
-exp_dir: "cyh_eval"
+exp_dir: ""
 note: ""
 naming_keywords: ["note", "time"]
 
@@ -10,7 +10,7 @@ num_gpu: 1
 mode: "test"
 
 resume: False
-pretrain_ckpt_path: '/hdd/caoyuhao/3D_data/MTU3D/embodied_saved_data/stage1-pretrain-all'
+pretrain_ckpt_path: ''
 
 debug:
   flag: False
@@ -23,11 +23,13 @@ logger:
 
 # dataset details
 data:
+  train_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_train_200.txt'
+  val_split: '/hdd/caoyuhao/VLN_ws/3D_data_tools/meta_data/scannetv2_val_20.txt'
   # train: ['EmbodiedScanInstSegHM3D', 'EmbodiedScanInstSegScanNet']
-  train: [ 'EmbodiedScanInstSegScanNet']
+  train: [ 'EmbodiedSAMInstSegScanNet']
 
-  val: ['EmbodiedScanInstSegScanNet']
-  test: ['EmbodiedScanInstSegScanNet']
+  val: ['EmbodiedSAMInstSegScanNet']
+  test: ['EmbodiedSAMInstSegScanNet']
 
   load_all_dataset_once: False
 
@@ -55,19 +57,20 @@ data:
     load_frame_interval: 10
     val_load_scan_max_num: 10
   
-  EmbodiedScanInstSegScanNet:
+  EmbodiedSAMInstSegScanNet:
     load_frame_interval: 1
     val_load_scan_max_num: 10
 
   scene_verse_base: /hdd/caoyuhao/3D_data/g3d-lf/SceneVerse
-  embodied_base: /hdd/public_datasets/embodied_scan
+  embodied_base: /hdd/caoyuhao/3D_data/MTU3D/embodied_scan_DINOv2_ViTL
 
 # dataloader details
 dataloader:
   # This is a per-gpu batchsize
   batchsize: 16
   batchsize_eval: 1
-  num_workers: 4
+  num_workers: 1
+  prefetch_factor: 2
   
 task: InstSeg
 data_wrapper: EmbodiedScanInstSegDatasetWrapper
@@ -80,7 +83,7 @@ solver:
   lr: 1e-4
   grad_norm: 80
   epochs: 60
-  epochs_per_eval: 60
+  epochs_per_eval: 10
   optim:
     name: AdamW
     args:
@@ -91,19 +94,16 @@ solver:
       warmup_steps: 100
 
 eval:
-#EmbodiedScanInstSegEvalGTMerge
-#EmbodiedScanInstSegEvalBoxMergeOpenVocab
-
-  name: EmbodiedScanInstSegEvalBoxMerge
+  name: EmbodiedSAMInstSegEvalBoxMerge
   dataset_name: ScanNet
   pass_kwargs: True
   save: True
   ignore_label: ${data.instseg_options.ignore_label}
   filter_out_classes: [0, 2, 35]
-  compute_loss_eval: False
+  compute_loss_eval: True
 
 model:
-  name: EmbodiedPQ3DInstSegModel
+  name: EmbodiedCRTInstSegModel
   memories: [voxel, mv]
   hidden_size: 768
   init_query_by_feat: True
@@ -113,8 +113,9 @@ model:
     dim_loc: 3
     pairwise_rel_type: "center"
 
-  voxel_encoder:
-    name: PCDMask3DSegLevelEncoder
+  
+  pts_encoder:
+    name: PCDESAMSegLevelEncoder
     args:
       backbone_kwargs:
         config:
@@ -132,42 +133,36 @@ model:
   mv_encoder:
     name: ObjectEncoder
     args:
-      input_feat_size : 1024
+      input_feat_size : 1024 #CLIP:1024 RADIO:1536 DINOv3-convnext:1024 DINOv2-vitb:768
       hidden_size: ${model.hidden_size}
       use_projection: True
       use_cls_head: False
       dropout: 0.1
 
   unified_encoder:
-    name: QueryMaskEncoder
+    name: EmbodiedSAMDecoder
     args:
       hidden_size: ${model.hidden_size}
       num_attention_heads: 12
-      num_layers: 4
+      num_layers: 3
       spatial_selfattn: True
       memories: ${model.memories}
       structure: "parallel"
-      use_self_mask: true
       num_blocks: 1 
+      num_semantic_classes: 200
+      num_instance_classes: 1
 
-  heads: [mask, openvocab]
-  mask_head:
-    name: "MaskHeadSegLevelWithBox"
-    args:
-      hidden_size: ${model.hidden_size}
-      num_targets: 201
-      memories_for_match: ${model.memories}
-      filter_out_classes: []
+  heads: [openvocab]
   openvocab_head:
     name: "OpenVocabHead"
     args:
       hidden_dim: ${model.hidden_size}
       out_dim: 768
   
-  loss_list: [EmbodiedScanInstSegLoss]
+  loss_list: [EmbodiedSAMInstSegLoss]
   vis_loss_list: []
 
-  EmbodiedScanInstSegLoss:
+  EmbodiedSAMInstSegLoss:
     cost_class: 0.5
     cost_score: 0.5
     cost_mask: 1

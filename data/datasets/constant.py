@@ -205,7 +205,6 @@ VALID_CLASS_IDS_200 = (
 )
 
 CLASS_LABELS_200 = (
-    "wall",
     "chair",
     "floor",
     "table",

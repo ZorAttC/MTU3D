@@ -18,7 +18,7 @@ logger:
   name: wandb
   entity: cyh200206
   autoname: true
-  run_id: nkwbo8bp
+  run_id: sw9qius0
 data:
   train:
   - EmbodiedScanInstSegScanNet
@@ -79,7 +79,7 @@ solver:
     args:
       warmup_steps: 100
 eval:
-  name: EmbodiedScanInstSegEvalBoxMergeOpenVocab
+  name: EmbodiedScanInstSegEvalBoxMerge
   dataset_name: ScanNet
   pass_kwargs: true
   save: true
